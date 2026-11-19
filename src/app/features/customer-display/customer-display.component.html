@@ -6,7 +6,7 @@
         <i class="ri-cup-line"></i>
       </div>
       <div>
-        <h1 class="brand-name">{{ activeBranch?.name || 'Brew & Beans Artisan Cafe' }}</h1>
+        <h1 class="brand-name">{{ activeBranch.name }}</h1>
         <p class="brand-sub">
           Customer Billing & Payment Display
           <span *ngIf="isLiveCart && selectedDisplayMode === 'LIVE_TILL'" class="live-pill">
@@ -106,11 +106,11 @@
           <span>-₹{{ (activeOrder.discount_amount || 0) | number:'1.2-2' }}</span>
         </div>
         <div class="summary-line text-muted">
-          <span>CGST ({{ activeBranch?.default_cgst_pct || 2.5 }}%):</span>
+          <span>CGST ({{ activeBranch.default_cgst_pct || 2.5 }}%):</span>
           <span>₹{{ (activeOrder.cgst_amount || 0) | number:'1.2-2' }}</span>
         </div>
         <div class="summary-line text-muted">
-          <span>SGST ({{ activeBranch?.default_sgst_pct || 2.5 }}%):</span>
+          <span>SGST ({{ activeBranch.default_sgst_pct || 2.5 }}%):</span>
           <span>₹{{ (activeOrder.sgst_amount || 0) | number:'1.2-2' }}</span>
         </div>
         <div class="summary-line grand-total-line">
@@ -143,7 +143,7 @@
       </div>
 
       <div class="vpa-info">
-        <div class="vpa-text">UPI VPA: <b>{{ activeBranch?.upi_vpa || 'brewbeans@icici' }}</b></div>
+        <div class="vpa-text">UPI VPA: <b>{{ activeBranch.upi_vpa }}</b></div>
         <div class="app-logos">
           <span>Google Pay</span> • 
           <span>PhonePe</span> • 
