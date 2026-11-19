@@ -52,9 +52,9 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     tenantId: string;
   } | null = null;
 
-  // Starter Templates Setup
-  seedStarterMenu: boolean = true;
-  seedStarterTables: boolean = true;
+  // Starter Templates Setup (Defaults to FALSE for 100% blank clean canvas)
+  seedStarterMenu: boolean = false;
+  seedStarterTables: boolean = false;
 
   tierOptions = [
     { label: '14-Day Free Trial (₹0)', value: 'TRIAL', icon: 'ri-time-line', subtext: 'Full feature trial' },
@@ -116,8 +116,8 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     this.newTier = 'GROWTH';
     this.newMaxBranches = 1;
     this.newPassword = 'Owner@123';
-    this.seedStarterMenu = true;
-    this.seedStarterTables = true;
+    this.seedStarterMenu = false;
+    this.seedStarterTables = false;
     this.showPassword = false;
     this.showOnboardModal = true;
   }

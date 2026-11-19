@@ -335,6 +335,19 @@ export class MenuService {
     this.deleteMenuItemFromSupabase(itemId);
   }
 
+  clearAllMenuForTenant(orgId: string): void {
+    this.itemsSubject.next([]);
+    this.categoriesSubject.next([]);
+    try {
+      localStorage.removeItem(`orderrestro_menu_categories_${orgId}`);
+      localStorage.removeItem(`orderrestro_menu_items_${orgId}`);
+    } catch {}
+    if (this.supabaseService.client) {
+      this.supabaseService.from('menu_items').delete().eq('organization_id', orgId).then().catch();
+      this.supabaseService.from('menu_categories').delete().eq('organization_id', orgId).then().catch();
+    }
+  }
+
   addCategory(name: string): MenuCategory {
     const newCat: MenuCategory = {
       id: `cat-${Date.now()}`,

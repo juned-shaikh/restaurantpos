@@ -131,7 +131,7 @@ export class MenuComponent implements OnInit {
 
     this.menuService.saveMenuItem({
       id: this.editingItem.id || '',
-      organization_id: 'org-cafe-01',
+      organization_id: this.menuService.currentOrgId,
       name: this.editingItem.name,
       short_code: this.editingItem.short_code,
       description: this.editingItem.description,
@@ -154,6 +154,14 @@ export class MenuComponent implements OnInit {
   deleteItem(id: string): void {
     if (confirm('Are you sure you want to delete this menu dish?')) {
       this.menuService.deleteMenuItem(id);
+      this.toast.info('Item removed from menu.', 'Deleted');
+    }
+  }
+
+  clearAllMenu(): void {
+    if (confirm('Are you sure you want to delete all menu items and categories for this restaurant?')) {
+      this.menuService.clearAllMenuForTenant(this.menuService.currentOrgId);
+      this.toast.success('All dishes cleared! You now have a clean blank menu.', 'Menu Cleared');
     }
   }
 

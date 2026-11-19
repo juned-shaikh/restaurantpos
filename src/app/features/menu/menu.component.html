@@ -6,9 +6,14 @@
       <p class="page-subtitle">Categories, items, and pricing</p>
     </div>
 
-    <button class="btn btn-primary" (click)="openAddItemModal()">
-      <i class="ri-add-line"></i> Add item
-    </button>
+    <div style="display: flex; gap: 8px;">
+      <button *ngIf="items.length > 0" class="btn btn-secondary btn-sm" (click)="clearAllMenu()" title="Clear all starter items to start blank">
+        <i class="ri-delete-bin-line"></i> Clear All Menu
+      </button>
+      <button class="btn btn-primary" (click)="openAddItemModal()">
+        <i class="ri-add-line"></i> Add item
+      </button>
+    </div>
   </div>
 
   <!-- Two-Column Layout (Matches Reference Image 3 Right Pane) -->
@@ -83,15 +88,24 @@
                 <strong style="color: #0F172A;">₹{{ item.price | number:'1.2-2' }}</strong>
               </td>
               <td>{{ item.tax_rate || 5 }}%</td>
-              <td style="text-align: right;">
+              <td style="text-align: right; white-space: nowrap;">
                 <button
                   class="btn-pill btn-sm"
                   [class.btn-secondary]="item.is_available"
                   [class.btn-primary]="!item.is_available"
                   (click)="toggleAvailability(item)"
                   title="Toggle 86 Stock"
+                  style="margin-right: 6px;"
                 >
                   {{ item.is_available ? 'In Stock' : 'Out of Stock' }}
+                </button>
+                <button
+                  class="btn btn-secondary btn-sm"
+                  (click)="deleteItem(item.id)"
+                  title="Delete dish"
+                  style="padding: 4px 8px; color: #DC2626; border-color: #FECDD3;"
+                >
+                  <i class="ri-delete-bin-line"></i>
                 </button>
               </td>
             </tr>
