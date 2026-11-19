@@ -1,0 +1,273 @@
+.kds-page {
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.kds-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+  font-size: 13.5px;
+  color: #64748B;
+  margin: 0;
+}
+
+.station-filter-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .station-pill {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    border: 1px solid #E2E8F0;
+    background: #FFFFFF;
+    color: #475569;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: #F8FAFC;
+      border-color: #CBD5E1;
+    }
+
+    &.active {
+      background: #FFF1F2;
+      border-color: #FECDD3;
+      color: #881337;
+      font-weight: 600;
+    }
+  }
+}
+
+/* Kanban Board: 4-Column Grid matching reference image */
+.kds-kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .kds-kanban-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kds-kanban-board {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kanban-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+
+    .col-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0F172A;
+    }
+
+    .col-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94A3B8;
+    }
+  }
+
+  .tickets-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 200px;
+  }
+
+  .empty-col {
+    color: #94A3B8;
+    font-size: 13px;
+    padding: 30px 10px;
+    text-align: center;
+  }
+}
+
+/* KDS Ticket Card (Clean Light Aesthetic) */
+.kds-ticket-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  &.urgent {
+    border-color: #F87171;
+    background: #FFFBFB;
+  }
+
+  &.ready-card {
+    border-color: #86EFAC;
+  }
+
+  .ticket-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    .ticket-id {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .ticket-sub {
+      font-size: 12px;
+      color: #64748B;
+      margin-top: 2px;
+    }
+
+    .time-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748B;
+      background: #F1F5F9;
+      border-radius: 6px;
+      padding: 2px 7px;
+      white-space: nowrap;
+
+      &.timer-urgent {
+        background: #FEE2E2;
+        color: #DC2626;
+      }
+
+      &.ready-badge {
+        background: #DCFCE7;
+        color: #16A34A;
+        font-weight: 700;
+      }
+    }
+  }
+
+  .ticket-items {
+    padding: 8px 0;
+    border-top: 1px solid #F1F5F9;
+    border-bottom: 1px solid #F1F5F9;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .ticket-item-row {
+      cursor: pointer;
+      user-select: none;
+
+      .item-line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13.5px;
+        color: #0F172A;
+
+        &.strike {
+          text-decoration: line-through;
+          color: #94A3B8;
+        }
+
+        .item-qty {
+          font-weight: 700;
+          color: #0F172A;
+        }
+
+        .item-name {
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  .ticket-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .kds-action-btn {
+      padding: 7px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+
+      &.primary {
+        background: #881337;
+        color: #FFFFFF;
+
+        &:hover {
+          background: #700f2b;
+        }
+      }
+
+      &.full-btn {
+        width: 100%;
+        background: #16A34A;
+        color: #FFFFFF;
+
+        &:hover {
+          background: #15803D;
+        }
+      }
+    }
+
+    .kds-icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      background: #F8FAFC;
+      color: #64748B;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #E2E8F0;
+      }
+    }
+  }
+}

@@ -1,0 +1,754 @@
+<div class="accounting-view">
+  <!-- View Header -->
+  <div class="view-header">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h2>Accounting & Financial Governance</h2>
+        <span class="badge" [class.badge-available]="isCloudConnected" [class.badge-reserved]="!isCloudConnected" style="font-size: 11px; padding: 3px 8px;">
+          <i [class]="isCloudConnected ? 'ri-cloud-line' : 'ri-hard-drive-2-line'"></i>
+          {{ isCloudConnected ? 'Supabase Cloud Synced' : 'Offline Cache Active' }}
+        </span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13px;">
+        Real-time day-end drawer reconciliation, petty cash disbursements, monthly budgets, P&L, and GST compliance.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'cashclose'" [class.btn-secondary]="activeTab !== 'cashclose'" (click)="activeTab = 'cashclose'">
+        <i class="ri-safe-2-line"></i> Nightly Cash Close
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'periodic'" [class.btn-secondary]="activeTab !== 'periodic'" (click)="activeTab = 'periodic'">
+        <i class="ri-calendar-check-line"></i> Periodic Trends
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'expenses'" [class.btn-secondary]="activeTab !== 'expenses'" (click)="activeTab = 'expenses'">
+        <i class="ri-receipt-line"></i> Expenses ({{ expenses.length }})
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'pnl'" [class.btn-secondary]="activeTab !== 'pnl'" (click)="activeTab = 'pnl'">
+        <i class="ri-line-chart-line"></i> P&L Statement
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'tax'" [class.btn-secondary]="activeTab !== 'tax'" (click)="activeTab = 'tax'">
+        <i class="ri-file-text-line"></i> GST Tax Summary
+      </button>
+      <button class="btn btn-sm btn-primary" (click)="showExpenseModal = true">
+        <i class="ri-add-line"></i> Log Expense
+      </button>
+    </div>
+  </div>
+
+  <!-- Sleek Financial Period Selector Bar -->
+  <div class="period-filter-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 8px 16px; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <i class="ri-calendar-2-line" style="color: #881337; font-size: 18px;"></i>
+      <span style="font-size: 13.5px; font-weight: 700; color: #0F172A;">Financial Period:</span>
+      <div style="width: 250px;">
+        <app-custom-select
+          [options]="periodOptions"
+          [(ngModel)]="selectedPeriod"
+          (valueChange)="onPeriodChange($event)"
+          size="sm"
+          menuMinWidth="250px"
+        ></app-custom-select>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="badge" style="background: #F1F5F9; color: #475569; font-size: 12px; padding: 5px 12px; font-weight: 600;">
+        <i class="ri-shopping-bag-3-line"></i> {{ periodOrderCount }} orders settled
+      </span>
+      <button class="btn btn-xs btn-outline" style="padding: 5px 10px; font-size: 11px; border-color: #CBD5E1; color: #475569;" (click)="syncFromLivePos()" title="Re-sync with latest live POS sales">
+        <i class="ri-refresh-line"></i> Sync POS
+      </button>
+    </div>
+  </div>
+
+  <!-- Live POS Register & Collections Strip (Dynamic across Selected Period) -->
+  <div class="live-pos-strip">
+    <div class="pos-stat-card">
+      <div class="stat-icon cash"><i class="ri-money-dollar-box-line"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Cash Collected</span>
+        <span class="stat-value">₹{{ periodCashTotal | number:'1.2-2' }}</span>
+        <span class="stat-sub">{{ periodLabel }} • Till: ₹{{ todayPosCashSales | number:'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <div class="pos-stat-card">
+      <div class="stat-icon upi"><i class="ri-qr-code-line"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">UPI QR Collections</span>
+        <span class="stat-value" style="color: #2563EB;">₹{{ periodUpiTotal | number:'1.2-2' }}</span>
+        <span class="stat-sub">{{ periodLabel }} • Bank Settled</span>
+      </div>
+    </div>
+
+    <div class="pos-stat-card">
+      <div class="stat-icon card"><i class="ri-bank-card-line"></i></div>
+      <div class="stat-info">
+        <span class="stat-label">Card Swipes</span>
+        <span class="stat-value" style="color: #7C3AED;">₹{{ periodCardTotal | number:'1.2-2' }}</span>
+        <span class="stat-sub">{{ periodLabel }} • EDC Terminal</span>
+      </div>
+    </div>
+
+    <div class="pos-stat-card" style="border-color: #FECDD3; background: #FFF1F2;">
+      <div class="stat-icon total"><i class="ri-funds-box-line"></i></div>
+      <div class="stat-info">
+        <span class="stat-label" style="color: #881337;">Total Gross Revenue</span>
+        <span class="stat-value" style="color: #881337;">₹{{ periodTotalRevenue | number:'1.2-2' }}</span>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <span class="stat-sub" style="color: #9F1239;">{{ periodLabel }}</span>
+          <span *ngIf="periodMonthlyAverage > 0" class="badge" style="background: #FFE4E6; color: #881337; font-size: 10px; padding: 2px 6px;">
+            Avg: ₹{{ periodMonthlyAverage | number:'1.0-0' }}/mo
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: PERIODIC SALES & CASH REPORTS (Daily, Weekly, Monthly, Yearly) -->
+  <div *ngIf="activeTab === 'periodic'" class="periodic-summary-layout card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h3>Financial Growth & Cash Volume (Daily • Weekly • Monthly • Yearly)</h3>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+          Multi-period financial breakdown tracking cash collections in hand, digital UPI payments, EDC card transactions, and net cash margins.
+        </p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-xs btn-secondary" (click)="syncFromLivePos()">
+          <i class="ri-refresh-line"></i> Re-Calculate All
+        </button>
+      </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <div style="overflow-x: auto; margin-bottom: 24px;">
+      <table class="data-table">
+        <thead>
+          <tr style="background: #F8FAFC;">
+            <th>Timeframe / Period</th>
+            <th>Cash Collected (💵)</th>
+            <th>UPI QR (📱)</th>
+            <th>Card / POS (💳)</th>
+            <th>Total Gross Sales (₹)</th>
+            <th>Settled Orders</th>
+            <th>Operational Expenses</th>
+            <th>Net Cash In-Hand</th>
+            <th>Average / Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of periodicComparisonData" [style.background]="row.period.includes('Daily') ? '#FFFBEB' : (row.period.includes('3 Months') || row.period.includes('6 Months') ? '#F0FDF4' : 'transparent')">
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <b style="font-size: 13.5px; color: #0F172A;">{{ row.period }}</b>
+                <span *ngIf="row.period.includes('Daily')" class="badge badge-occupied" style="font-size: 10px; padding: 2px 6px;">Live Today</span>
+                <span *ngIf="row.period.includes('3 Months')" class="badge" style="background: #DCFCE7; color: #166534; font-size: 10px; padding: 2px 6px;">Q3/Q4</span>
+              </div>
+            </td>
+            <td>
+              <span style="font-weight: 700; color: #16A34A; font-size: 14px;">₹{{ row.cash | number:'1.2-2' }}</span>
+            </td>
+            <td>
+              <span style="font-weight: 600; color: #2563EB;">₹{{ row.upi | number:'1.2-2' }}</span>
+            </td>
+            <td>
+              <span style="font-weight: 600; color: #7C3AED;">₹{{ row.card | number:'1.2-2' }}</span>
+            </td>
+            <td>
+              <b style="font-size: 15px; color: #881337;">₹{{ row.total | number:'1.2-2' }}</b>
+            </td>
+            <td>
+              <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 11px;">{{ row.orders }} orders</span>
+            </td>
+            <td>
+              <span style="color: #DC2626; font-weight: 600;">-₹{{ row.expenses | number:'1.2-2' }}</span>
+            </td>
+            <td>
+              <b style="color: #047857; font-size: 14px; background: #DCFCE7; padding: 4px 8px; border-radius: 6px;">
+                ₹{{ row.netCash | number:'1.2-2' }}
+              </b>
+            </td>
+            <td>
+              <span style="font-size: 11.5px; color: #64748B; font-weight: 600;">{{ row.note }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Month-by-Month Individual Breakdown (Last 6 Months History) -->
+    <div style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+          <i class="ri-bar-chart-grouped-line" style="color: #881337;"></i>
+          Month-by-Month Individual Breakdown (Last 6 Months History)
+        </h4>
+        <span style="font-size: 12px; color: #64748B;">Detailed monthly receipts & payment channel split</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+        <div
+          *ngFor="let m of monthlyBreakdownHistory"
+          style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; background: #FFFFFF; transition: all 0.15s ease;"
+          [style.borderColor]="m.isCurrent ? '#FECDD3' : '#E2E8F0'"
+          [style.background]="m.isCurrent ? '#FFF1F2' : '#FFFFFF'"
+        >
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <b style="font-size: 13.5px; color: #0F172A;">{{ m.month }}</b>
+            <span *ngIf="m.isCurrent" class="badge badge-occupied" style="font-size: 10px; padding: 2px 6px;">Current</span>
+            <span *ngIf="!m.isCurrent" class="badge" style="background: #F1F5F9; color: #475569; font-size: 10px; padding: 2px 6px;">Audited</span>
+          </div>
+
+          <div style="font-size: 18px; font-weight: 800; color: #881337; margin-bottom: 8px;">
+            ₹{{ m.total | number:'1.0-0' }}
+            <span style="font-size: 11px; font-weight: 500; color: #64748B;">({{ m.orders }} orders)</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 11px; background: rgba(0,0,0,0.03); padding: 6px 8px; border-radius: 6px;">
+            <div>
+              <span style="color: #64748B; display: block;">💵 Cash</span>
+              <b style="color: #16A34A;">₹{{ m.cash | number:'1.0-0' }}</b>
+            </div>
+            <div>
+              <span style="color: #64748B; display: block;">📱 UPI</span>
+              <b style="color: #2563EB;">₹{{ m.upi | number:'1.0-0' }}</b>
+            </div>
+            <div>
+              <span style="color: #64748B; display: block;">💳 Card</span>
+              <b style="color: #7C3AED;">₹{{ m.card | number:'1.0-0' }}</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 Visual KPI Progress Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+      <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #F8FAFC;">
+        <span style="font-size: 12px; font-weight: 600; color: #64748B;">DAILY RATIO (TODAY)</span>
+        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ (cashSales + todayUpiSales + todayCardSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #64748B;">Cash: {{ ((cashSales / (cashSales + todayUpiSales + todayCardSales || 1)) * 100) | number:'1.0-0' }}% • Online: {{ (((todayUpiSales + todayCardSales) / (cashSales + todayUpiSales + todayCardSales || 1)) * 100) | number:'1.0-0' }}%</div>
+      </div>
+
+      <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #F8FAFC;">
+        <span style="font-size: 12px; font-weight: 600; color: #64748B;">WEEKLY REVENUE (7 DAYS)</span>
+        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ (54200 + todayPosCashSales + 38100 + todayUpiSales + 6200 + todayCardSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #64748B;">Weekly Cash Share: ₹{{ (54200 + todayPosCashSales) | number:'1.0-0' }}</div>
+      </div>
+
+      <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #F8FAFC;">
+        <span style="font-size: 12px; font-weight: 600; color: #64748B;">MONTHLY REVENUE (MTD)</span>
+        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ (210400 + todayPosCashSales + 146300 + todayUpiSales + 27800 + todayCardSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #64748B;">Monthly Cash Share: ₹{{ (210400 + todayPosCashSales) | number:'1.0-0' }}</div>
+      </div>
+
+      <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #FFF1F2; border-color: #FECDD3;">
+        <span style="font-size: 12px; font-weight: 600; color: #881337;">ANNUAL REVENUE (FY 2026 YTD)</span>
+        <div style="font-size: 20px; font-weight: 800; color: #881337; margin: 4px 0;">₹{{ (2350000 + todayPosCashSales + 1620000 + todayUpiSales + 310000 + todayCardSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #9F1239;">Annual Cash: ₹{{ (2350000 + todayPosCashSales) | number:'1.0-0' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: NIGHTLY CASH CLOSE TERMINAL -->
+  <div *ngIf="activeTab === 'cashclose'" class="cashclose-layout">
+    <!-- Active Terminal Form -->
+    <div class="cashclose-form card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div>
+          <h3>Day-End Cash Drawer Reconciliation</h3>
+          <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+            Physically count bills and coins in the till to verify against recorded POS sales and cash expenses.
+          </p>
+        </div>
+        <button class="btn btn-xs btn-secondary" (click)="syncFromLivePos()" title="Re-sync with latest POS orders and cash expenses">
+          <i class="ri-refresh-line"></i> Re-Sync POS Data
+        </button>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Opening Drawer Float (₹)</label>
+          <input type="number" class="form-control" [(ngModel)]="openingDrawer">
+          <small style="color: var(--text-muted); font-size: 11px;">Initial cash balance at shift start</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Total Cash Sales Collected (₹)</label>
+          <input type="number" class="form-control" [(ngModel)]="cashSales" (ngModelChange)="onSalesChanged()">
+          <small style="color: var(--text-muted); font-size: 11px;">Includes base + live settled cash orders</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Petty Cash Expenses Paid (₹)</label>
+          <input type="number" class="form-control" [(ngModel)]="pettyExpenses" (ngModelChange)="onExpensesChanged()">
+          <small style="color: var(--text-muted); font-size: 11px;">Paid in cash from register drawer</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Cash Refunds Given (₹)</label>
+          <input type="number" class="form-control" [(ngModel)]="cashRefunds">
+          <small style="color: var(--text-muted); font-size: 11px;">Cash refunded to customers</small>
+        </div>
+      </div>
+
+      <!-- Variance Banner -->
+      <div class="variance-banner card">
+        <div class="var-col">
+          <span class="var-title">Expected Drawer Cash:</span>
+          <b class="var-val" style="color: var(--text-main);">₹{{ computedExpectedCash | number:'1.2-2' }}</b>
+          <span style="font-size: 11px; color: var(--text-muted);">Opening + Sales - Petty - Refunds</span>
+        </div>
+
+        <div class="var-col">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <span class="var-title">Actual Counted Cash:</span>
+            <button class="btn btn-xs btn-outline" style="padding: 1px 6px; font-size: 10px;" (click)="setCountedToExpected()" title="Set counted cash exactly equal to expected">
+              Tally Exact
+            </button>
+          </div>
+          <input
+            type="number"
+            class="form-control"
+            style="width: 150px; font-size: 17px; font-weight: 800; color: var(--text-main); border: 2px solid var(--border-color);"
+            [(ngModel)]="actualCountedCash"
+            (ngModelChange)="onCountedCashChanged()"
+          >
+        </div>
+
+        <div class="var-col">
+          <span class="var-title">Variance (Shortage/Surplus):</span>
+          <b
+            class="var-val"
+            [style.color]="computedVariance === 0 ? 'var(--success)' : (computedVariance < 0 ? 'var(--danger)' : 'var(--warning)')"
+          >
+            {{ computedVariance >= 0 ? '+' : '' }}₹{{ computedVariance | number:'1.2-2' }}
+          </b>
+          <span style="font-size: 11px; font-weight: 700;" [style.color]="computedVariance === 0 ? 'var(--success)' : (computedVariance < 0 ? 'var(--danger)' : 'var(--warning)')">
+            {{ computedVariance === 0 ? '✅ Perfect Drawer Tally' : (computedVariance < 0 ? '⚠️ Cash Shortage in Drawer' : '💡 Cash Surplus in Drawer') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Manager Audit & Handover Notes</label>
+        <input class="form-control" placeholder="e.g. All ₹500 & ₹200 notes verified, float kept in safe" [(ngModel)]="cashCloseNotes">
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" (click)="recordCashClose()">
+        Submit Day-End Cash Closing 🔒
+      </button>
+    </div>
+
+    <!-- Past Closings History -->
+    <div class="closings-history card">
+      <h3>Historical Day-End Closings</h3>
+      <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+        Audit trail of previous register closes and drawer variances.
+      </p>
+      <table class="data-table" style="margin-top: 14px;">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Expected</th>
+            <th>Actual Counted</th>
+            <th>Variance</th>
+            <th>Closed By</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of cashClosings">
+            <td><b>{{ c.closing_date }}</b></td>
+            <td>₹{{ c.expected_drawer_cash | number:'1.2-2' }}</td>
+            <td>₹{{ c.actual_counted_cash | number:'1.2-2' }}</td>
+            <td>
+              <b [style.color]="c.variance_amount === 0 ? 'var(--success)' : 'var(--danger)'">
+                {{ c.variance_amount >= 0 ? '+' : '' }}₹{{ c.variance_amount | number:'1.2-2' }}
+              </b>
+            </td>
+            <td>{{ c.closed_by_name }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: EXPENSES -->
+  <div *ngIf="activeTab === 'expenses'" class="card" style="display: flex; flex-direction: column; gap: 16px;">
+    <!-- Expense Stats Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+      <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">
+              {{ expenseViewFilter === 'PERIOD' ? selectedPeriodLabel : 'All-Time Logged' }} Expenses
+            </span>
+            <span class="badge" style="font-size: 10px; background: #FFF1F2; color: #881337; padding: 1px 6px;">
+              {{ expenseViewFilter === 'PERIOD' ? (periodExpensesCount + ' txn') : (expenses.length + ' total') }}
+            </span>
+          </div>
+          <div style="font-size: 20px; font-weight: 800; color: var(--danger); margin-top: 2px;">
+            ₹{{ (expenseViewFilter === 'PERIOD' ? periodExpensesSum : totalExpensesAmount) | number:'1.2-2' }}
+          </div>
+        </div>
+
+        <div style="height: 32px; width: 1px; background: var(--border-color);"></div>
+
+        <div>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Drawer Petty Cash</span>
+          <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-top: 2px;">
+            ₹{{ (expenseViewFilter === 'PERIOD' ? periodDrawerCashExpenses : allPettyExpenses) | number:'1.2-2' }}
+          </div>
+        </div>
+
+        <div style="height: 32px; width: 1px; background: var(--border-color);"></div>
+
+        <div>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">UPI & Bank Transfers</span>
+          <div style="font-size: 18px; font-weight: 800; color: #2563EB; margin-top: 2px;">
+            ₹{{ (expenseViewFilter === 'PERIOD' ? periodOnlineExpenses : (totalExpensesAmount - allPettyExpenses)) | number:'1.2-2' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Filter Switch: Selected Period vs All History -->
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: inline-flex; background: #F1F5F9; border-radius: 8px; padding: 3px; border: 1px solid #CBD5E1;">
+          <button
+            type="button"
+            class="btn btn-xs"
+            [style.background]="expenseViewFilter === 'PERIOD' ? '#881337' : 'transparent'"
+            [style.color]="expenseViewFilter === 'PERIOD' ? '#FFFFFF' : '#475569'"
+            [style.boxShadow]="expenseViewFilter === 'PERIOD' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'"
+            (click)="expenseViewFilter = 'PERIOD'"
+            style="border: none; border-radius: 6px; font-weight: 600; padding: 5px 12px; cursor: pointer; transition: all 0.15s ease;"
+          >
+            🗓️ Filter: {{ selectedPeriodLabel }} ({{ periodExpensesCount }})
+          </button>
+          <button
+            type="button"
+            class="btn btn-xs"
+            [style.background]="expenseViewFilter === 'ALL' ? '#881337' : 'transparent'"
+            [style.color]="expenseViewFilter === 'ALL' ? '#FFFFFF' : '#475569'"
+            [style.boxShadow]="expenseViewFilter === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'"
+            (click)="expenseViewFilter = 'ALL'"
+            style="border: none; border-radius: 6px; font-weight: 600; padding: 5px 12px; cursor: pointer; transition: all 0.15s ease;"
+          >
+            📋 All History ({{ expenses.length }})
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expenses Table -->
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Amount</th>
+          <th>Mode</th>
+          <th>Paid To</th>
+          <th>Description</th>
+          <th>Recorded By</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let exp of displayedExpenses">
+          <td><b>{{ exp.expense_date }}</b></td>
+          <td><span class="badge badge-bill-requested">{{ exp.category_name }}</span></td>
+          <td><b style="color: var(--danger); font-size: 14px;">₹{{ exp.amount | number:'1.2-2' }}</b></td>
+          <td>
+            <span class="badge-mode" [ngClass]="'mode-' + (exp.payment_mode || 'cash').toLowerCase()">
+              {{ exp.payment_mode }}
+            </span>
+          </td>
+          <td><b>{{ exp.paid_to }}</b></td>
+          <td style="color: var(--text-muted);">{{ exp.description }}</td>
+          <td>{{ exp.recorded_by_name || 'Cashier' }}</td>
+        </tr>
+        <tr *ngIf="displayedExpenses.length === 0">
+          <td colspan="7" style="text-align: center; padding: 24px; color: #64748B;">
+            <i class="ri-inbox-line" style="font-size: 24px; display: block; margin-bottom: 6px;"></i>
+            No operational expenses logged for <b>{{ selectedPeriodLabel }}</b>.
+            <div style="margin-top: 8px;">
+              <button class="btn btn-xs btn-outline" (click)="expenseViewFilter = 'ALL'">View All Time History ({{ expenses.length }})</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TAB 3: PROFIT & LOSS -->
+  <div *ngIf="activeTab === 'pnl' && pnl" class="card pnl-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3>{{ pnl.period }}</h3>
+          <span class="badge badge-available">Dynamic Live POS Link</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+          <span style="font-size: 12px; color: var(--text-muted);">Accrual-based financial statement reflecting live orders & expenses</span>
+          <button class="btn btn-sm btn-secondary" (click)="openOverheadsModal()" style="font-size: 11px; padding: 3px 8px;" title="Set your cafe's Rent, Electricity & Staff Payroll">
+            <i class="ri-settings-3-line"></i> Edit Rent & Payroll
+          </button>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <span style="font-size: 11px; color: var(--text-muted); display: block; font-weight: 600;">Net Operating Profit:</span>
+        <b style="font-size: 24px;" [style.color]="pnl.net_profit_before_tax >= 0 ? 'var(--success)' : 'var(--danger)'">
+          ₹{{ pnl.net_profit_before_tax | number:'1.2-2' }}
+        </b>
+        <span style="font-size: 12px; font-weight: 700; display: block;" [style.color]="pnl.net_profit_margin_pct >= 0 ? 'var(--success)' : 'var(--danger)'">
+          ({{ pnl.net_profit_margin_pct }}% Margin)
+        </span>
+      </div>
+    </div>
+
+    <div class="pnl-breakdown" style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+      <div class="pnl-row">
+        <span>Gross Sales Revenue (Dine-in + Takeaway):</span>
+        <b>₹{{ pnl.gross_sales | number:'1.2-2' }}</b>
+      </div>
+      <div class="pnl-row" style="color: var(--text-muted);">
+        <span>Customer Discounts & Promotions Given:</span>
+        <b>-₹{{ pnl.discounts | number:'1.2-2' }}</b>
+      </div>
+      <div class="pnl-row" style="border-top: 1px solid var(--border-color); padding-top: 8px; font-weight: 700;">
+        <span>Net Sales Revenue:</span>
+        <b style="color: var(--text-main);">₹{{ pnl.net_sales | number:'1.2-2' }}</b>
+      </div>
+      <div class="pnl-row" style="color: var(--danger);">
+        <span>Cost of Goods Sold (COGS - 28% Benchmark Food Cost):</span>
+        <b>-₹{{ pnl.cost_of_goods_sold | number:'1.2-2' }}</b>
+      </div>
+      <div class="pnl-row highlight" style="background: var(--bg-main); padding: 10px 14px; border-radius: 8px; margin: 4px 0;">
+        <span style="font-weight: 700;">Gross Profit:</span>
+        <b style="color: var(--success); font-size: 16px;">₹{{ pnl.gross_profit | number:'1.2-2' }} ({{ pnl.gross_margin_pct }}% Margin)</b>
+      </div>
+
+      <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin-top: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+        Operating Overheads & Recorded Expenses:
+      </div>
+      <div *ngFor="let o of pnl.operating_expenses" class="pnl-row" style="font-size: 13px; color: var(--text-muted);">
+        <span>{{ o.category }}</span>
+        <span>₹{{ o.amount | number:'1.2-2' }}</span>
+      </div>
+      <div class="pnl-row" style="border-top: 1px solid var(--border-color); padding-top: 8px; color: var(--danger); font-weight: 700;">
+        <span>Total Operational Expenses:</span>
+        <b>-₹{{ pnl.total_expenses | number:'1.2-2' }}</b>
+      </div>
+
+      <div class="pnl-row highlight" style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 12px 14px; border-radius: 8px; margin-top: 10px;">
+        <span style="font-weight: 800; color: #065F46; font-size: 15px;">Net Operating Profit (Before Income Tax):</span>
+        <b style="color: #065F46; font-size: 18px;">₹{{ pnl.net_profit_before_tax | number:'1.2-2' }}</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: GST TAX REPORT -->
+  <div *ngIf="activeTab === 'tax'" class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h3>India GST 5% Tax Collection & Liability</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+          Statutory breakdown into Equal CGST (2.5%) and SGST (2.5%) for monthly GSTR-3B filings.
+        </p>
+      </div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tax Slab & Scope</th>
+          <th>Taxable Sales Value</th>
+          <th>CGST Collected (2.5%)</th>
+          <th>SGST Collected (2.5%)</th>
+          <th>Total Tax Liability to Govt</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of taxSummaries">
+          <td><b>{{ t.tax_slab }}</b></td>
+          <td>₹{{ t.taxable_sales | number:'1.2-2' }}</td>
+          <td>₹{{ t.cgst_collected | number:'1.2-2' }}</td>
+          <td>₹{{ t.sgst_collected | number:'1.2-2' }}</td>
+          <td><b style="color: #881337; font-size: 15px;">₹{{ t.total_tax_liability | number:'1.2-2' }}</b></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Log Expense Modal -->
+<div class="modal-overlay" *ngIf="showExpenseModal" (click)="showExpenseModal = false">
+  <div class="modal-dialog" style="max-width: 520px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h3 class="modal-title">Log Daily Operational Expense</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 2px 0 0 0;">
+          Record vendor payouts or petty cash disbursements.
+        </p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="showExpenseModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body" style="padding: 16px 22px; gap: 12px;">
+      <!-- Row 1: Category -->
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label">Expense Category</label>
+        <app-custom-select
+          [options]="expenseCategoryOptions"
+          [(ngModel)]="expCategory"
+        ></app-custom-select>
+      </div>
+
+      <!-- Row 2: Amount Paid & Payment Mode (2 Columns) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Amount Paid (₹)</label>
+          <input type="number" class="form-control" placeholder="e.g. 850" [(ngModel)]="expAmount">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Disbursement Mode</label>
+          <app-custom-select
+            [options]="expensePaymentModes"
+            [(ngModel)]="expPaymentMode"
+          ></app-custom-select>
+        </div>
+      </div>
+
+      <!-- Row 3: Paid To & Description (2 Columns) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Paid To (Vendor Name)</label>
+          <input class="form-control" placeholder="e.g. Fresh Dairy Wholesaler" [(ngModel)]="expVendor">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Description / Note</label>
+          <input class="form-control" placeholder="e.g. 5x Milk packets" [(ngModel)]="expDescription">
+        </div>
+      </div>
+
+      <!-- Row 4: Smart Auto-Restock Inventory Link -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 12px; margin-top: 4px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; margin-bottom: 0;">
+          <input type="checkbox" [(ngModel)]="linkInventoryStock" style="width: 15px; height: 15px; accent-color: #881337; cursor: pointer;">
+          <span style="font-size: 12.5px; font-weight: 700; color: #0F172A;">
+            📦 Auto-add stock to Kitchen Inventory?
+          </span>
+        </label>
+
+        <!-- Inventory Selection Block -->
+        <div *ngIf="linkInventoryStock" style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #CBD5E1; display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: end;">
+          <div>
+            <label class="form-label" style="font-size: 11.5px; margin-bottom: 4px;">Ingredient to Restock</label>
+            <app-custom-select
+              [options]="ingredientOptions"
+              [(ngModel)]="selectedIngredientId"
+              placeholder="Select ingredient"
+              size="sm"
+            ></app-custom-select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 11.5px; margin-bottom: 4px;">Qty ({{ selectedIngredient?.uom || 'Unit' }})</label>
+            <input type="number" class="form-control" style="padding: 6px 10px; font-size: 12.5px;" placeholder="e.g. 10" [(ngModel)]="restockQty">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 12px 22px;">
+      <button class="btn btn-secondary" (click)="showExpenseModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveExpense()">
+        <i class="ri-check-line" style="margin-right: 4px;"></i> Record Expense
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIGURE FIXED OVERHEADS MODAL (Rent, Electricity/Water, Staff Payroll) -->
+<div class="modal-backdrop" *ngIf="showOverheadsModal" (click)="showOverheadsModal = false">
+  <div class="modal-dialog" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="ri-settings-3-line" style="color: #881337; font-size: 20px;"></i>
+        <h3 class="modal-title">Configure Store Fixed Overheads</h3>
+      </div>
+      <button class="modal-close-btn" (click)="showOverheadsModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p style="font-size: 12.5px; color: #64748B; margin-bottom: 16px;">
+        Apne restaurant ke fixed monthly kharche yahan set kijiye. P&L engine inhein automatically Daily (÷ 30) aur Weekly (× 7 ÷ 30) statements mein pro-rate karega.
+      </p>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+          <i class="ri-building-line" style="color: #881337;"></i>
+          Store Rent & Property Maintenance (₹ / Month)
+        </label>
+        <div class="input-with-icon">
+          <input type="number" class="form-control" [(ngModel)]="rentInput" placeholder="e.g. 85000">
+        </div>
+        <span class="field-helper" style="font-size: 11px; color: #64748B; margin-top: 2px; display: block;">
+          Daily Pro-rated Cost: <b>₹{{ (rentInput / 30) | number:'1.2-2' }} / day</b>
+        </span>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+          <i class="ri-flashlight-line" style="color: #D97706;"></i>
+          Utilities - Electricity, Water & Internet (₹ / Month)
+        </label>
+        <div class="input-with-icon">
+          <input type="number" class="form-control" [(ngModel)]="utilitiesInput" placeholder="e.g. 24500">
+        </div>
+        <span class="field-helper" style="font-size: 11px; color: #64748B; margin-top: 2px; display: block;">
+          Daily Pro-rated Cost: <b>₹{{ (utilitiesInput / 30) | number:'1.2-2' }} / day</b>
+        </span>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+          <i class="ri-team-line" style="color: #2563EB;"></i>
+          Staff Payroll, Salaries & Welfare (₹ / Month)
+        </label>
+        <div class="input-with-icon">
+          <input type="number" class="form-control" [(ngModel)]="payrollInput" placeholder="e.g. 72000">
+        </div>
+        <span class="field-helper" style="font-size: 11px; color: #64748B; margin-top: 2px; display: block;">
+          Daily Pro-rated Cost: <b>₹{{ (payrollInput / 30) | number:'1.2-2' }} / day</b>
+        </span>
+      </div>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; font-size: 12.5px; color: #334155; margin-top: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600;">Total Monthly Fixed Overheads:</span>
+          <b style="font-size: 16px; color: #881337;">₹{{ (rentInput + utilitiesInput + payrollInput) | number:'1.0-0' }} / mo</b>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: #64748B; margin-top: 4px;">
+          <span>Daily Total Pro-rata:</span>
+          <b>₹{{ ((rentInput + utilitiesInput + payrollInput) / 30) | number:'1.2-2' }} / day</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showOverheadsModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveOverheads()">
+        <i class="ri-check-line" style="margin-right: 4px;"></i> Save & Recalculate P&L
+      </button>
+    </div>
+  </div>
+</div>

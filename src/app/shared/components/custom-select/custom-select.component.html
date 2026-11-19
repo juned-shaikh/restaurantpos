@@ -1,0 +1,88 @@
+<div
+  class="custom-select-wrapper"
+  [class.open]="isOpen"
+  [class.disabled]="disabled"
+  [class.size-sm]="size === 'sm'"
+  [class.size-lg]="size === 'lg'"
+>
+  <!-- Trigger Button -->
+  <button
+    type="button"
+    class="select-trigger"
+    (click)="toggleDropdown($event)"
+    [disabled]="disabled"
+    [attr.aria-expanded]="isOpen"
+  >
+    <div class="trigger-content">
+      <i *ngIf="displayIcon" [class]="displayIcon + ' trigger-icon'"></i>
+      <span class="trigger-label" [class.is-placeholder]="!selectedOption">
+        {{ displayLabel }}
+      </span>
+    </div>
+
+    <i class="ri-arrow-down-s-line chevron-icon" [class.rotated]="isOpen"></i>
+  </button>
+
+  <!-- Floating Dropdown Menu Panel -->
+  <div
+    class="select-menu"
+    *ngIf="isOpen"
+    [class.open-upwards]="openUpwards"
+    [class.align-right]="menuAlign === 'right'"
+    [style.width]="menuWidth || null"
+    [style.min-width]="menuMinWidth || null"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Search filter if more than 4 options -->
+    <div class="select-search-box" *ngIf="normalizedOptions.length > 4">
+      <i class="ri-search-line search-icon"></i>
+      <input
+        type="text"
+        class="select-search-input"
+        placeholder="Search category or option..."
+        [(ngModel)]="searchFilter"
+        (click)="$event.stopPropagation()"
+      >
+      <button
+        *ngIf="searchFilter"
+        type="button"
+        class="clear-search-btn"
+        (click)="searchFilter = ''; $event.stopPropagation()"
+        title="Clear search"
+      >
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="options-container">
+      <div *ngIf="filteredOptions.length === 0" class="empty-options">
+        <span *ngIf="searchFilter">No options found matching "{{ searchFilter }}"</span>
+        <span *ngIf="!searchFilter">No options available</span>
+      </div>
+
+      <div
+        *ngFor="let opt of filteredOptions"
+        class="select-option"
+        [class.selected]="opt.value === selectedValue"
+        (click)="selectOption(opt, $event)"
+      >
+        <div class="opt-left">
+          <i *ngIf="opt.icon" [class]="opt.icon + ' opt-icon'"></i>
+          <div class="opt-text-block">
+            <span class="opt-label">{{ opt.label }}</span>
+            <span *ngIf="opt.subtext" class="opt-subtext">{{ opt.subtext }}</span>
+          </div>
+        </div>
+
+        <div class="opt-right">
+          <span
+            *ngIf="opt.badge"
+            class="opt-badge"
+            [ngClass]="'badge-' + (opt.badgeType || opt.badge).toLowerCase().replace('_', '-')"
+          >{{ opt.badge }}</span>
+          <i *ngIf="opt.value === selectedValue" class="ri-check-line check-icon"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

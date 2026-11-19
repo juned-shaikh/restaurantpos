@@ -1,0 +1,516 @@
+/* ==============================================================================
+   RESTAURANT POS & ERP SAAS — MASTER DESIGN SYSTEM
+   Theme: Modern Clean Minimalist Light Hospitality (Matches Reference Design)
+   Accent: Deep Burgundy / Wine (#881337 / #9F1239)
+   ============================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Brand Accents */
+  --primary: #881337;           /* Deep Wine / Burgundy */
+  --primary-hover: #701A75;
+  --primary-light: #FFF1F2;     /* Subtle light pink/rose pill */
+  --primary-border: #FBCFE8;
+  --primary-glow: rgba(136, 19, 55, 0.15);
+
+  --secondary: #4F46E5;         /* Indigo */
+  --secondary-light: #EEF2FF;
+
+  /* Status Colors */
+  --success: #16A34A;           /* Green */
+  --success-bg: #DCFCE7;
+  --success-border: #86EFAC;
+  --success-text: #15803D;
+
+  --warning: #D97706;           /* Amber */
+  --warning-bg: #FEF3C7;
+  --warning-border: #FDE68A;
+  --warning-text: #B45309;
+
+  --danger: #DC2626;            /* Red */
+  --danger-bg: #FEE2E2;
+  --danger-border: #FCA5A5;
+  --danger-text: #991B1B;
+
+  --info: #0284C7;              /* Blue */
+  --info-bg: #E0F2FE;
+
+  /* Neutral Backgrounds (Clean Modern Light Theme) */
+  --bg-main: #F8FAFC;           /* Ultra-soft off-white page background */
+  --bg-sidebar: #FFFFFF;        /* White Sidebar */
+  --bg-card: #FFFFFF;           /* Crisp White Card */
+  --bg-card-hover: #F8FAFC;
+  --bg-elevated: #F1F5F9;       /* Subtle input & table header background */
+  --border-color: #E2E8F0;      /* Crisp clean border */
+  --border-subtle: #F1F5F9;
+
+  /* Typography Colors */
+  --text-main: #0F172A;         /* Slate 900 (High-contrast) */
+  --text-muted: #64748B;        /* Slate 500 */
+  --text-dim: #94A3B8;          /* Slate 400 */
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+/* Remix Icon Global Consistency */
+i[class^="ri-"], i[class*=" ri-"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Base Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Button System (Matches reference: burgundy filled and subtle pill outlines) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  text-decoration: none;
+  line-height: 1;
+  box-sizing: border-box;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #FFFFFF;
+  border-color: var(--primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    box-shadow: 0 2px 8px var(--primary-glow);
+  }
+}
+
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: var(--text-main);
+  border-color: var(--border-color);
+
+  &:hover:not(:disabled) {
+    background-color: var(--bg-main);
+    border-color: #CBD5E1;
+  }
+}
+
+.btn-pill {
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-lg {
+  padding: 12px 22px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Card Container System */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Form Layout System (Fixes Form Breakage on Admin and All Popups) */
+.form-group {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-label,
+label.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+  text-align: left;
+}
+
+.form-control,
+input[type="text"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="email"],
+select,
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+  }
+
+  &::placeholder {
+    color: var(--text-dim);
+  }
+
+  &[readonly] {
+    background-color: #F8FAFC;
+    color: #64748B;
+    cursor: default;
+  }
+}
+
+/* Pill Filter Buttons */
+.filter-pill {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background-color: #FFFFFF;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  &.active {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary-border);
+    font-weight: 600;
+  }
+}
+
+/* Modern Minimalist Tables */
+.data-table-container,
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: #FFFFFF;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13.5px;
+
+  th {
+    background-color: #FAFAFA;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    vertical-align: middle;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tr:hover td {
+    background-color: #FAFCFE;
+  }
+}
+
+/* Veg / Non-Veg Indicator Dots (Classic Indian F&B standard) */
+.food-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+
+  &.veg {
+    background-color: #16A34A;
+  }
+
+  &.non-veg {
+    background-color: #DC2626;
+  }
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  &.badge-success,
+  &.badge-available {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+    border: 1px solid var(--success-border);
+  }
+
+  &.badge-warning,
+  &.badge-reserved {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+  }
+
+  &.badge-danger,
+  &.badge-occupied {
+    background-color: var(--danger-bg);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+  }
+
+  &.badge-primary,
+  &.badge-bill-requested {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary-border);
+  }
+
+  &.badge-neutral {
+    background-color: #F1F5F9;
+    color: #475569;
+    border: 1px solid #E2E8F0;
+  }
+}
+
+/* ==============================================================================
+   MODAL POPUP SYSTEM (Clean Solid White Card Dialogs with Backdrop Blur)
+   ============================================================================== */
+.modal-overlay,
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start; /* Ensures modal top is never clipped on smaller laptop screens */
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px 16px;
+  box-sizing: border-box;
+  overflow-y: auto; /* Clean whole-overlay scroll so entire form and buttons are 100% accessible */
+}
+
+/* Supports both .modal-dialog and .modal-content uniformly */
+.modal-dialog,
+.modal-content {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
+  margin: auto; /* Beautifully centered when space allows, perfectly scrolls without overflow clipping */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10000;
+  color: #0F172A;
+  animation: modalPop 0.18s ease-out;
+  overflow: visible;
+}
+
+.modal-dialog {
+  padding: 0;
+}
+
+.modal-content {
+  padding: 0;
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #FFFFFF;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  flex-shrink: 0;
+
+  h3, .modal-title {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0;
+  }
+}
+
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #F1F5F9;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  background: #F8FAFC;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  flex-shrink: 0;
+}
+
+/* Clean, Minimalist Modal Close Button (Circular, bordered, high quality) */
+.modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  padding: 0;
+  font-size: 19px;
+  line-height: 1;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    background-color: #F1F5F9;
+    color: #0F172A;
+    border-color: #CBD5E1;
+    transform: scale(1.04);
+  }
+
+  &:active {
+    background-color: #E2E8F0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

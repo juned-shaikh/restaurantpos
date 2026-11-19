@@ -1,0 +1,222 @@
+<div class="kds-page">
+  <!-- Top Title & Station Filter Pills Row -->
+  <div class="kds-title-row">
+    <div>
+      <h1 class="page-title">Kitchen Display</h1>
+      <p class="page-subtitle">Live order tickets by station</p>
+    </div>
+
+    <!-- Station Filter Pills -->
+    <div class="station-filter-pills">
+      <button
+        class="station-pill"
+        [class.active]="selectedStationId === 'ALL'"
+        (click)="selectedStationId = 'ALL'"
+      >
+        All Stations ({{ tickets.length }})
+      </button>
+      <button
+        *ngFor="let st of stations"
+        class="station-pill"
+        [class.active]="selectedStationId === st.id"
+        (click)="selectedStationId = st.id"
+      >
+        {{ st.name }}
+      </button>
+    </div>
+  </div>
+
+  <!-- 4-Column Responsive Kanban Board (Matches Reference Screenshot) -->
+  <div class="kds-kanban-board">
+    <!-- 1. NEW COLUMN -->
+    <div class="kanban-col">
+      <div class="col-header">
+        <span class="col-title">New</span>
+        <span class="col-count">{{ pendingTickets.length }}</span>
+      </div>
+
+      <div class="tickets-container">
+        <div *ngIf="pendingTickets.length === 0" class="empty-col">No tickets</div>
+
+        <div *ngFor="let t of pendingTickets" class="kds-ticket-card" [class.urgent]="isUrgent(t)">
+          <div class="ticket-head">
+            <div>
+              <div class="ticket-id">#{{ t.order_number }}</div>
+              <div class="ticket-sub">Table {{ t.table_number }} · {{ t.kitchen_station_name || 'Kitchen' }}</div>
+            </div>
+            <span class="time-badge" [ngClass]="getTimerClass(t)">{{ t.elapsed_mins || 2 }}m</span>
+          </div>
+
+          <div class="ticket-items">
+            <div *ngFor="let item of t.items" class="ticket-item-row" (click)="toggleStrike(t.id, item.id)">
+              <span class="item-line" [class.strike]="item.is_struck_through">
+                <span class="item-qty">{{ item.quantity }}×</span>
+                <span class="item-name">{{ item.name }}</span>
+              </span>
+              <div *ngIf="item.modifiers_summary" style="font-size: 11px; color: #4F46E5; font-weight: 600; padding-left: 18px; margin-top: 2px;">
+                ↳ {{ item.modifiers_summary }}
+              </div>
+              <div *ngIf="item.notes" style="font-size: 11px; color: #DC2626; font-weight: 700; padding-left: 18px; margin-top: 2px;">
+                ★ NOTE: {{ item.notes }}
+              </div>
+            </div>
+          </div>
+
+          <div class="ticket-actions">
+            <button class="kds-action-btn primary" (click)="advanceTicket(t)">
+              Accept
+            </button>
+            <button class="kds-icon-btn" title="Reprint KOT" (click)="reprintKot(t)">
+              <i class="ri-printer-line"></i>
+            </button>
+            <button class="kds-icon-btn" title="Reject / Options" (click)="openRejectModal(t)">
+              <i class="ri-close-circle-line"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ACCEPTED COLUMN -->
+    <div class="kanban-col">
+      <div class="col-header">
+        <span class="col-title">Accepted</span>
+        <span class="col-count">0</span>
+      </div>
+
+      <div class="tickets-container">
+        <div class="empty-col">No tickets</div>
+      </div>
+    </div>
+
+    <!-- 3. PREPARING COLUMN -->
+    <div class="kanban-col">
+      <div class="col-header">
+        <span class="col-title">Preparing</span>
+        <span class="col-count">{{ preparingTickets.length }}</span>
+      </div>
+
+      <div class="tickets-container">
+        <div *ngIf="preparingTickets.length === 0" class="empty-col">No tickets</div>
+
+        <div *ngFor="let t of preparingTickets" class="kds-ticket-card" [class.urgent]="isUrgent(t)">
+          <div class="ticket-head">
+            <div>
+              <div class="ticket-id">#{{ t.order_number }}</div>
+              <div class="ticket-sub">Table {{ t.table_number }} · {{ t.kitchen_station_name || 'Kitchen' }}</div>
+            </div>
+            <span class="time-badge" [ngClass]="getTimerClass(t)">{{ t.elapsed_mins || 5 }}m</span>
+          </div>
+
+          <div class="ticket-items">
+            <div *ngFor="let item of t.items" class="ticket-item-row" (click)="toggleStrike(t.id, item.id)">
+              <span class="item-line" [class.strike]="item.is_struck_through">
+                <span class="item-qty">{{ item.quantity }}×</span>
+                <span class="item-name">{{ item.name }}</span>
+              </span>
+              <div *ngIf="item.modifiers_summary" style="font-size: 11px; color: #4F46E5; font-weight: 600; padding-left: 18px; margin-top: 2px;">
+                ↳ {{ item.modifiers_summary }}
+              </div>
+              <div *ngIf="item.notes" style="font-size: 11px; color: #DC2626; font-weight: 700; padding-left: 18px; margin-top: 2px;">
+                ★ NOTE: {{ item.notes }}
+              </div>
+            </div>
+          </div>
+
+          <div class="ticket-actions">
+            <button class="kds-action-btn primary" (click)="advanceTicket(t)">
+              Mark ready
+            </button>
+            <button class="kds-icon-btn" title="Reprint KOT" (click)="reprintKot(t)">
+              <i class="ri-printer-line"></i>
+            </button>
+            <button class="kds-icon-btn" title="Reject / Options" (click)="openRejectModal(t)">
+              <i class="ri-close-circle-line"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. READY COLUMN -->
+    <div class="kanban-col">
+      <div class="col-header">
+        <span class="col-title">Ready</span>
+        <span class="col-count">{{ readyTickets.length }}</span>
+      </div>
+
+      <div class="tickets-container">
+        <div *ngIf="readyTickets.length === 0" class="empty-col">No tickets</div>
+
+        <div *ngFor="let t of readyTickets" class="kds-ticket-card ready-card">
+          <div class="ticket-head">
+            <div>
+              <div class="ticket-id">#{{ t.order_number }}</div>
+              <div class="ticket-sub">Table {{ t.table_number }} · Pass Pickup</div>
+            </div>
+            <span class="time-badge ready-badge">PASS READY</span>
+          </div>
+
+          <div class="ticket-items">
+            <div *ngFor="let item of t.items" class="ticket-item-row strike">
+              <span class="item-line strike">
+                <span class="item-qty">{{ item.quantity }}×</span>
+                <span class="item-name">{{ item.name }}</span>
+              </span>
+              <div *ngIf="item.modifiers_summary" style="font-size: 11px; color: #4F46E5; font-weight: 600; padding-left: 18px; margin-top: 2px;">
+                ↳ {{ item.modifiers_summary }}
+              </div>
+              <div *ngIf="item.notes" style="font-size: 11px; color: #DC2626; font-weight: 700; padding-left: 18px; margin-top: 2px;">
+                ★ NOTE: {{ item.notes }}
+              </div>
+            </div>
+          </div>
+
+          <div class="ticket-actions">
+            <button class="kds-action-btn full-btn" (click)="advanceTicket(t)">
+              Serve to Guest <i class="ri-check-line" style="margin-left: 4px;"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KITCHEN TICKET REJECTION MODAL -->
+<div class="modal-overlay" *ngIf="showRejectModal">
+  <div class="modal-dialog" style="max-width: 440px;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 16px; margin: 0; color: #DC2626; font-weight: 700;">Reject Kitchen Ticket #{{ ticketToReject?.kot_number }}</h3>
+      <button class="btn btn-secondary btn-sm" style="border-radius: 50%; width: 28px; height: 28px; padding: 0;" (click)="showRejectModal = false">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div style="padding: 20px;">
+      <div *ngIf="ticketToReject?.status === 'PREPARING'" style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px; margin-bottom: 14px; color: #991B1B; font-size: 12.5px;">
+        <i class="ri-alert-line" style="margin-right: 4px;"></i> <b>Manager Authorization Required:</b> Food is already cooking on the station stove. Manager confirmation is logged for waste auditing.
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label">Reason for Rejection:</label>
+        <app-custom-select
+          [options]="rejectReasonOptions"
+          [(ngModel)]="rejectReason"
+        ></app-custom-select>
+      </div>
+
+      <div class="form-group" *ngIf="ticketToReject?.status === 'PREPARING'">
+        <label class="form-label">Manager PIN:</label>
+        <input type="password" [(ngModel)]="managerPin" placeholder="Enter 4-digit PIN (default 1234)" class="form-control" style="font-size: 15px;">
+      </div>
+    </div>
+
+    <div style="padding: 14px 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 10px; background: #F8FAFC;">
+      <button class="btn btn-secondary" (click)="showRejectModal = false">Cancel</button>
+      <button class="btn btn-danger" (click)="confirmRejectTicket()">
+        Confirm Rejection & Log
+      </button>
+    </div>
+  </div>
+</div>

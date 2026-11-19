@@ -1,0 +1,213 @@
+<div class="display-container" [class.is-fullscreen]="isFullscreen">
+  <!-- Top Branding Header -->
+  <header class="display-header">
+    <div class="brand-block">
+      <div class="brand-avatar">
+        <i class="ri-cup-line"></i>
+      </div>
+      <div>
+        <h1 class="brand-name">{{ activeBranch?.name || 'Brew & Beans Artisan Cafe' }}</h1>
+        <p class="brand-sub">
+          Customer Billing & Payment Display
+          <span *ngIf="isLiveCart && selectedDisplayMode === 'LIVE_TILL'" class="live-pill">
+            <span class="live-dot"></span> LIVE POS SYNC
+          </span>
+          <span *ngIf="selectedDisplayMode === 'SIMULATE'" class="live-pill demo-pill">
+            <span class="live-dot orange"></span> LIVE SIMULATION
+          </span>
+          <span *ngIf="selectedDisplayMode.startsWith('SAMPLE_')" class="live-pill sample-pill">
+            <i class="ri-eye-line"></i> PREVIEW
+          </span>
+        </p>
+      </div>
+    </div>
+
+    <div class="header-right-actions">
+      <!-- Mode Switcher & Simulator -->
+      <div style="width: 215px;">
+        <app-custom-select
+          [options]="displayModeOptions"
+          [(ngModel)]="selectedDisplayMode"
+          (valueChange)="onDisplayModeChange($event)"
+          size="sm"
+        ></app-custom-select>
+      </div>
+
+      <button
+        class="btn btn-sm btn-secondary"
+        (click)="simulateLiveBilling()"
+        title="Simulate dishes ringing up dynamically in real time"
+      >
+        <i class="ri-play-circle-line"></i> Simulate
+      </button>
+
+      <button
+        class="btn btn-sm btn-secondary"
+        (click)="openPosTill()"
+        title="Open POS Till in new window for dual-screen testing"
+      >
+        <i class="ri-external-link-line"></i> Open Till
+      </button>
+
+      <div class="table-badge" *ngIf="activeOrder">
+        <span>Order #{{ activeOrder.order_number }}</span>
+        <span *ngIf="activeOrder.table_number"> • Table {{ activeOrder.table_number }}</span>
+      </div>
+
+      <button class="btn btn-secondary btn-sm fs-btn" (click)="toggleFullscreen()" title="Toggle Fullscreen for Dual Monitor">
+        <i [class]="isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'"></i>
+        {{ isFullscreen ? 'Exit' : 'Fullscreen' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content: Active Bill vs Idle Screen -->
+  <div class="display-main" *ngIf="activeOrder && activeOrder.items && activeOrder.items.length > 0; else idleScreen">
+    <!-- Left: Cart Items List -->
+    <div class="items-card card">
+      <div class="items-card-head">
+        <h3 class="card-title">Your Order Summary</h3>
+        <span class="items-counter-badge">{{ activeOrder.items.length }} {{ activeOrder.items.length === 1 ? 'item' : 'items' }}</span>
+      </div>
+      
+      <div class="items-table-header">
+        <span>Item Details</span>
+        <span style="text-align: center;">Qty</span>
+        <span style="text-align: right;">Amount</span>
+      </div>
+
+      <div class="items-list">
+        <div *ngFor="let item of activeOrder.items" class="item-row">
+          <div class="item-info">
+            <span class="diet-dot" [class.veg]="item.is_veg" [class.nonveg]="!item.is_veg"></span>
+            <div>
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-mods" *ngIf="item.modifiers?.length">
+                <span *ngFor="let m of item.modifiers; let isLast = last">+ {{ m.name }}{{ isLast ? '' : ', ' }}</span>
+              </div>
+              <div class="item-mods" *ngIf="item.notes" style="font-style: italic; color: #B45309;">
+                Note: {{ item.notes }}
+              </div>
+            </div>
+          </div>
+          <div class="item-qty">{{ item.quantity }}</div>
+          <div class="item-total">₹{{ (item.total_price || 0) | number:'1.2-2' }}</div>
+        </div>
+      </div>
+
+      <!-- Bill Totals Footer -->
+      <div class="bill-summary">
+        <div class="summary-line">
+          <span>Subtotal:</span>
+          <span>₹{{ (activeOrder.subtotal || 0) | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-line discount-line" *ngIf="(activeOrder.discount_amount || 0) > 0">
+          <span>Special Discount ({{ activeOrder.discount_pct }}%):</span>
+          <span>-₹{{ (activeOrder.discount_amount || 0) | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-line text-muted">
+          <span>CGST ({{ activeBranch?.default_cgst_pct || 2.5 }}%):</span>
+          <span>₹{{ (activeOrder.cgst_amount || 0) | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-line text-muted">
+          <span>SGST ({{ activeBranch?.default_sgst_pct || 2.5 }}%):</span>
+          <span>₹{{ (activeOrder.sgst_amount || 0) | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-line grand-total-line">
+          <span>TOTAL TO PAY:</span>
+          <span class="grand-total-amount">₹{{ (activeOrder.total_amount || 0) | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Instant UPI QR & Payment Guidance -->
+    <div class="payment-card card">
+      <div class="payment-header">
+        <h2>Instant UPI Payment</h2>
+        <p>Scan with any UPI App to Pay Instantly</p>
+      </div>
+
+      <!-- Real Scannable Dynamic NPCI QR Code -->
+      <div class="qr-wrapper">
+        <div class="qr-box">
+          <img
+            *ngIf="encodedUpiUri"
+            [src]="'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodedUpiUri"
+            alt="Dynamic NPCI UPI QR"
+            class="live-qr-img"
+          />
+        </div>
+        <div class="qr-amount-badge">
+          Pay ₹{{ (activeOrder.total_amount || 0) | number:'1.2-2' }}
+        </div>
+      </div>
+
+      <div class="vpa-info">
+        <div class="vpa-text">UPI VPA: <b>{{ activeBranch?.upi_vpa || 'brewbeans@icici' }}</b></div>
+        <div class="app-logos">
+          <span>Google Pay</span> • 
+          <span>PhonePe</span> • 
+          <span>Paytm</span> • 
+          <span>BHIM UPI</span> • 
+          <span>Cred</span>
+        </div>
+      </div>
+
+      <div class="audio-hint">
+        <i class="ri-volume-up-line"></i> Cashier audio confirmation enabled on payment
+      </div>
+    </div>
+  </div>
+
+  <!-- Idle Screen: Shown when Counter Till has no active cart -->
+  <ng-template #idleScreen>
+    <div class="idle-card card">
+      <div class="idle-hero">
+        <div class="idle-icon-wrap">
+          <i class="ri-restaurant-2-line"></i>
+        </div>
+        <h2>Welcome to {{ activeBranch ? activeBranch.name : 'Our Restaurant' }}!</h2>
+        <p class="idle-tagline">Freshly prepared dishes, handcrafted beverages & exceptional hospitality.</p>
+        
+        <div class="idle-features-grid">
+          <div class="idle-feat">
+            <i class="ri-wifi-line"></i>
+            <div>
+              <div class="feat-title">High-Speed Guest Wi-Fi</div>
+              <div class="feat-desc">Ask our team for complimentary Wi-Fi access details.</div>
+            </div>
+          </div>
+          <div class="idle-feat">
+            <i class="ri-flashlight-line"></i>
+            <div>
+              <div class="feat-title">Fast Table Ordering</div>
+              <div class="feat-desc">Scan the QR code on your table to browse menu & reorder!</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="idle-waiting-note">
+          <span class="pulse-dot"></span>
+          <span>Ready for your order · Team standing by</span>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <!-- PAYMENT SUCCESS CELEBRATION OVERLAY -->
+  <div class="settled-overlay" *ngIf="showPaymentSuccess">
+    <div class="settled-card card">
+      <div class="settled-icon">
+        <i class="ri-checkbox-circle-fill"></i>
+      </div>
+      <h2>Payment Confirmed!</h2>
+      <div class="settled-amount">₹{{ paymentSuccessDetails?.amount | number:'1.2-2' }}</div>
+      <p class="settled-subtitle">
+        Payment via <b>{{ paymentSuccessDetails?.mode }}</b> received for Order #<b>{{ paymentSuccessDetails?.orderNo || 'Live' }}</b>
+      </p>
+      <div class="settled-banner">
+        <i class="ri-heart-line"></i> Thank you! Please visit {{ activeBranch ? activeBranch.name : 'us' }} again.
+      </div>
+    </div>
+  </div>
+</div>

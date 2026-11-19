@@ -1,0 +1,571 @@
+<div class="tables-page">
+  <!-- Top Header Row -->
+  <div class="tables-title-row">
+    <div>
+      <h1 class="page-title">{{ activeTab === 'reservations' ? 'Reservations' : 'Tables' }}</h1>
+      <p class="page-subtitle">
+        {{ activeTab === 'reservations' ? 'Upcoming bookings across all floors' : 'Live floor status — tap a table to update it' }}
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <!-- Tab Switcher (Floor Plan vs Reservations) -->
+      <div class="tab-switcher">
+        <button
+          class="filter-pill"
+          [class.active]="activeTab === 'floor'"
+          (click)="activeTab = 'floor'"
+        >
+          <i class="ri-layout-masonry-line"></i> Floor Plan
+        </button>
+        <button
+          class="filter-pill"
+          [class.active]="activeTab === 'reservations'"
+          (click)="activeTab = 'reservations'"
+        >
+          <i class="ri-calendar-event-line"></i> Reservations
+        </button>
+      </div>
+
+      <ng-container *ngIf="activeTab === 'floor'">
+        <!-- Quick Bulk Setup for 1 to 40+ tables -->
+        <button class="btn btn-secondary btn-sm" (click)="openBulkModal()" title="Auto-generate multiple tables at once">
+          <i class="ri-magic-line"></i> ⚡ Quick Bulk Setup (1-40 Tables)
+        </button>
+
+        <!-- Single Table Add -->
+        <button class="btn btn-primary btn-sm" (click)="openAddTableModal()">
+          <i class="ri-add-line"></i> + Add Table
+        </button>
+      </ng-container>
+
+      <button *ngIf="activeTab === 'reservations'" class="btn btn-primary btn-sm" (click)="activeTab = 'reservations'">
+        <i class="ri-add-line"></i> New reservation
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 1: VISUAL FLOOR PLAN & WAITLIST (Matches Reference Image 2) -->
+  <div *ngIf="activeTab === 'floor'" class="floor-and-waitlist-layout">
+    <!-- LEFT: Floor Canvas -->
+    <div class="floor-canvas-card card">
+      <!-- Floor Switcher & Add Section Pill -->
+      <div class="floor-pills">
+        <button
+          *ngFor="let f of floors"
+          class="filter-pill"
+          [class.active]="selectedFloorId === f.id"
+          (click)="selectedFloorId = f.id"
+        >
+          {{ f.name }} ({{ getTableCountForFloor(f.id) }})
+        </button>
+
+        <button class="filter-pill add-floor-pill" (click)="openAddFloorModal()" title="Add a new seating section (e.g. Terrace, AC Lounge)">
+          <i class="ri-add-line"></i> + Add Floor / Area
+        </button>
+      </div>
+
+      <!-- 2D Interactive Table Canvas -->
+      <div class="canvas-stage">
+        <div *ngIf="filteredTables.length === 0" class="empty-canvas-notice">
+          <i class="ri-table-line"></i>
+          <h4>No tables on this floor yet</h4>
+          <p>Click <b>"+ Add Table"</b> or use <b>"⚡ Quick Bulk Setup"</b> to add your cafe tables in 1 second.</p>
+          <button class="btn btn-primary btn-sm" (click)="openBulkModal()">
+            ⚡ Bulk Generate 10-40 Tables
+          </button>
+        </div>
+
+        <div
+          *ngFor="let tbl of filteredTables"
+          class="table-chip"
+          [ngClass]="getTableClass(tbl)"
+          [style.left.%]="tbl.pos_x"
+          [style.top.%]="tbl.pos_y"
+          (click)="selectTable(tbl)"
+        >
+          <div class="table-chip-num">{{ tbl.table_number }}</div>
+          <div class="table-chip-seats">{{ tbl.capacity }} seats</div>
+        </div>
+      </div>
+
+      <!-- Bottom Legend -->
+      <div class="canvas-legend">
+        <div class="legend-item">
+          <span class="legend-dot dot-green"></span>
+          <span>Available</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot dot-red"></span>
+          <span>Occupied</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot dot-yellow"></span>
+          <span>Reserved</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot dot-grey"></span>
+          <span>Cleaning / out of service</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Waitlist Sidebar -->
+    <div class="waitlist-card card">
+      <div class="waitlist-head">
+        <h3 class="waitlist-title">Waitlist</h3>
+        <button class="btn btn-secondary btn-sm" (click)="activeTab = 'waitlist'">
+          <i class="ri-user-add-line"></i> Add to waitlist
+        </button>
+      </div>
+
+      <div class="waitlist-body">
+        <div *ngIf="waitlist.length === 0" class="no-waitlist-msg">
+          No one waiting.
+        </div>
+
+        <div *ngFor="let w of waitlist" class="waitlist-item">
+          <div>
+            <strong>{{ w.customer_name }}</strong>
+            <div style="font-size: 11.5px; color: #64748B;">{{ w.party_size }} guests · {{ w.phone }}</div>
+          </div>
+          <button class="btn btn-primary btn-sm" (click)="seatWaitlistGuest(w.id)">Seat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: RESERVATIONS LIST -->
+  <div *ngIf="activeTab === 'reservations'" class="reservations-view">
+    <div class="reservations-list card">
+      <div *ngIf="reservations.length === 0" class="no-waitlist-msg">
+        No upcoming bookings.
+      </div>
+
+      <div *ngFor="let r of reservations" class="reservation-card-row">
+        <div class="res-left">
+          <div class="res-name">{{ r.customer_name }}</div>
+          <div class="res-meta">{{ r.party_size }} guests · {{ r.phone }}</div>
+        </div>
+        <div class="res-right">
+          <div class="res-time">{{ r.reservation_time | date:'d MMM, HH:mm' }}</div>
+          <span class="badge badge-warning">RESERVED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 1. Table Action Drawer / Modal -->
+<div class="modal-overlay" *ngIf="selectedTable">
+  <div class="modal-dialog">
+    <div style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 17px; margin: 0;">Table {{ selectedTable.table_number }} Details</h3>
+      <button class="btn-pill btn-secondary btn-sm" (click)="selectedTable = null">✕</button>
+    </div>
+
+    <div style="padding: 20px 24px;">
+      <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+        <span class="badge" [ngClass]="getTableClass(selectedTable)">{{ selectedTable.status }}</span>
+        <span style="font-size: 13px; color: #64748B;">Capacity: <b>{{ selectedTable.capacity }} Guests</b></span>
+        <span style="font-size: 13px; color: #64748B;">Shape: <b>{{ selectedTable.shape }}</b></span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button *ngIf="selectedTable.status === 'AVAILABLE'" class="btn btn-primary" (click)="occupyTable(selectedTable); selectedTable = null;">
+          🍽️ Mark as Occupied / Seat Guests
+        </button>
+
+        <button *ngIf="selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILL_REQUESTED'" class="btn btn-primary" (click)="openQuickSettle(selectedTable)">
+          ⚡ Settle Bill Now (₹{{ getTableBillAmount(selectedTable) | number:'1.2-2' }})
+        </button>
+
+        <button *ngIf="selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILL_REQUESTED'" class="btn btn-secondary" (click)="goToBilling(selectedTable)">
+          🛒 Open POS Register
+        </button>
+
+        <button *ngIf="selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILL_REQUESTED'" class="btn btn-secondary" (click)="freeTable(selectedTable); selectedTable = null;">
+          ✨ Mark Clean & Available
+        </button>
+
+        <button class="btn btn-secondary" (click)="openTransferModal(selectedTable)">
+          ⇄ Transfer Order to Another Table
+        </button>
+
+        <button class="btn btn-secondary" (click)="showQrForTable(selectedTable)">
+          📱 View Table QR Code
+        </button>
+
+        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 8px 0;">
+
+        <!-- Delete Table Option -->
+        <button class="btn btn-danger-outline" style="border: 1px solid #FCA5A5; color: #DC2626; background: #FEF2F2;" (click)="deleteTable(selectedTable)">
+          <i class="ri-delete-bin-line"></i> Delete Table {{ selectedTable.table_number }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Single Table Add Modal -->
+<div class="modal-overlay" *ngIf="showAddTableModal" (click)="showAddTableModal = false">
+  <div class="modal-dialog" style="max-width: 460px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>+ Add New Table</h3>
+      <button type="button" class="modal-close-btn" (click)="showAddTableModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Table Number / Label:</label>
+        <input type="text" [(ngModel)]="newTableNumber" placeholder="e.g. T-07, VIP-1, Outdoor-02" class="form-control">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Floor / Area:</label>
+          <select [(ngModel)]="newTableFloorId" class="form-control">
+            <option *ngFor="let f of floors" [value]="f.id">{{ f.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Guest Seats:</label>
+          <select [(ngModel)]="newTableCapacity" class="form-control">
+            <option [value]="2">2 Seats (Couple)</option>
+            <option [value]="4">4 Seats (Standard)</option>
+            <option [value]="6">6 Seats (Family)</option>
+            <option [value]="8">8 Seats (Large Group)</option>
+            <option [value]="10">10+ Seats</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Table Shape:</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="newTableShape === 'RECTANGLE'"
+            (click)="newTableShape = 'RECTANGLE'"
+            style="text-align: center;"
+          >
+            Rectangle
+          </button>
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="newTableShape === 'SQUARE'"
+            (click)="newTableShape = 'SQUARE'"
+            style="text-align: center;"
+          >
+            Square
+          </button>
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="newTableShape === 'ROUND'"
+            (click)="newTableShape = 'ROUND'"
+            style="text-align: center;"
+          >
+            Round
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showAddTableModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveSingleTable()">Save Table</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Bulk Tables Generator Modal (For 1 to 40+ Tables in 1 Click) -->
+<div class="modal-overlay" *ngIf="showBulkModal" (click)="showBulkModal = false">
+  <div class="modal-dialog" style="max-width: 520px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h3 style="margin: 0;">⚡ Quick Setup — Bulk Table Generator</h3>
+        <p style="font-size: 12px; color: #64748B; margin: 3px 0 0 0;">Create 1 to 40+ tables with auto-grid floor layout</p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="showBulkModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div style="background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 8px; padding: 12px; color: #881337; font-size: 12.5px;">
+        <i class="ri-information-line"></i> <b>Ideal for new cafes & restaurants:</b> Creates tables in a neat non-overlapping 2D grid across your selected floor automatically.
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Floor / Section:</label>
+          <select [(ngModel)]="bulkFloorId" class="form-control">
+            <option *ngFor="let f of floors" [value]="f.id">{{ f.name }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">How many tables? (1 - 50):</label>
+          <input type="number" [(ngModel)]="bulkCount" min="1" max="50" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Table Prefix:</label>
+          <input type="text" [(ngModel)]="bulkPrefix" placeholder="e.g. T-, Table , TR-" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Starting Number:</label>
+          <input type="number" [(ngModel)]="bulkStartNum" min="1" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Seats per Table:</label>
+          <select [(ngModel)]="bulkCapacity" class="form-control">
+            <option [value]="2">2 Seats</option>
+            <option [value]="4">4 Seats</option>
+            <option [value]="6">6 Seats</option>
+            <option [value]="8">8 Seats</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Table Shape:</label>
+          <select [(ngModel)]="bulkShape" class="form-control">
+            <option value="RECTANGLE">Rectangle</option>
+            <option value="SQUARE">Square</option>
+            <option value="ROUND">Round</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="font-size: 12px; color: #64748B;">
+        Preview: Tables will be created from <b>{{ bulkPrefix }}{{ bulkStartNum < 10 ? '0' + bulkStartNum : bulkStartNum }}</b> to <b>{{ bulkPrefix }}{{ bulkStartNum + bulkCount - 1 < 10 ? '0' + (bulkStartNum + bulkCount - 1) : (bulkStartNum + bulkCount - 1) }}</b>.
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showBulkModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="executeBulkCreation()">
+        ⚡ Generate {{ bulkCount }} Tables Now
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Add Floor / Section Modal -->
+<div class="modal-overlay" *ngIf="showAddFloorModal" (click)="showAddFloorModal = false">
+  <div class="modal-dialog" style="max-width: 440px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 style="margin: 0;">+ Add Seating Area / Floor</h3>
+      <button type="button" class="modal-close-btn" (click)="showAddFloorModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Area / Floor Name:</label>
+        <input type="text" [(ngModel)]="newFloorName" placeholder="e.g. Open Air Terrace, Rooftop Lounge, AC Family Hall" class="form-control">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showAddFloorModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveNewFloor()">Create Area</button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Table Transfer Modal -->
+<div class="modal-overlay" *ngIf="showTransferModal" (click)="showTransferModal = false">
+  <div class="modal-dialog" style="max-width: 440px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 style="margin: 0;">Transfer Table {{ selectedTable?.table_number }}</h3>
+      <button type="button" class="modal-close-btn" (click)="showTransferModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <p style="font-size: 13px; color: #64748B; margin-bottom: 14px;">
+        Move current running bill and occupied status to another available table:
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Select Available Target Table:</label>
+        <select [(ngModel)]="transferTargetTableId" class="form-control">
+          <option value="" disabled selected>-- Choose Available Table --</option>
+          <option *ngFor="let t of availableTables" [value]="t.id">
+            {{ t.table_number }} ({{ t.capacity }} Seats · {{ t.shape }})
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showTransferModal = false">Cancel</button>
+      <button class="btn btn-primary" [disabled]="!transferTargetTableId" (click)="executeTransfer()">
+        Confirm Transfer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 6. QR Viewer Modal -->
+<div class="modal-overlay" *ngIf="showQrModal" (click)="showQrModal = false">
+  <div class="modal-dialog" style="text-align: center; padding: 24px; max-width: 440px;" (click)="$event.stopPropagation()">
+    <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #881337; margin-bottom: 4px;">
+      {{ tenantService.currentOrg.name }}
+    </div>
+    <h3 style="margin-bottom: 4px;">Table {{ selectedTable?.table_number }} QR Standee</h3>
+    <p style="font-size: 12.5px; color: #64748B; margin-bottom: 16px;">
+      Customers scan this QR code with their mobile camera to browse menu, call waiter, and order directly.
+    </p>
+
+    <div style="display: inline-block; padding: 16px; background: #FFFFFF; border: 2px dashed #E2E8F0; border-radius: 16px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+      <img
+        [src]="getTableQrImageUrl(selectedTable)"
+        alt="Table QR"
+        style="width: 200px; height: 200px; display: block; margin: 0 auto;"
+      >
+      <div style="margin-top: 10px; font-weight: 800; font-size: 15px; color: #0F172A;">
+        TABLE {{ selectedTable?.table_number }}
+      </div>
+      <div style="font-size: 10px; color: #64748B; word-break: break-all; margin-top: 4px; max-width: 280px;">
+        {{ getTableQrLink(selectedTable) }}
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; justify-content: center;">
+      <a [href]="getTableQrLink(selectedTable)" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration: none;">
+        <i class="ri-external-link-line"></i> Test Live Link
+      </a>
+      <button class="btn btn-secondary btn-sm" (click)="printTentCard()">
+        <i class="ri-printer-line"></i> Print Standee
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="showQrModal = false">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- 7. Instant Table Settlement Modal -->
+<div class="modal-overlay" *ngIf="showTableSettleModal && tableSettlingOrder" (click)="showTableSettleModal = false">
+  <div class="modal-dialog" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h3 style="margin: 0;">
+          ⚡ Settle Table {{ selectedTable?.table_number }}
+        </h3>
+        <span style="font-size: 12px; color: #64748B;">
+          Order #{{ tableSettlingOrder.order_number }} · Total: <b>₹{{ tableSettlingOrder.total_amount | number:'1.2-2' }}</b>
+        </span>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="showTableSettleModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
+      <!-- Order Items Summary Box -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 11px; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom: 6px;">
+          Ordered Dishes
+        </div>
+        <div *ngFor="let it of tableSettlingOrder.items" style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+          <span>{{ it.quantity }}x {{ it.name }}</span>
+          <b>₹{{ it.total_price | number:'1.2-2' }}</b>
+        </div>
+        <div style="border-top: 1px dashed #CBD5E1; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; color: #881337;">
+          <span>Total To Pay:</span>
+          <span>₹{{ tableSettlingOrder.total_amount | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <!-- Payment Mode Tabs -->
+      <div class="form-group">
+        <label class="form-label">Payment Mode:</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="tableSettleMode === 'UPI'"
+            (click)="tableSettleMode = 'UPI'"
+            style="text-align: center; justify-content: center;"
+          >
+            <i class="ri-qr-code-line"></i> UPI QR
+          </button>
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="tableSettleMode === 'CASH'"
+            (click)="tableSettleMode = 'CASH'"
+            style="text-align: center; justify-content: center;"
+          >
+            <i class="ri-money-dollar-circle-line"></i> Cash
+          </button>
+          <button
+            type="button"
+            class="filter-pill"
+            [class.active]="tableSettleMode === 'CARD'"
+            (click)="tableSettleMode = 'CARD'"
+            style="text-align: center; justify-content: center;"
+          >
+            <i class="ri-bank-card-line"></i> Card
+          </button>
+        </div>
+      </div>
+
+      <!-- UPI QR Box -->
+      <div *ngIf="tableSettleMode === 'UPI'" style="text-align: center; padding: 12px; background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 12px;">
+        <div style="font-size: 12px; font-weight: 700; color: #881337; margin-bottom: 8px;">
+          Scan with GPay / PhonePe / Paytm / BHIM (₹{{ tableSettlingOrder.total_amount | number:'1.2-2' }})
+        </div>
+        <img
+          [src]="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + tableSettleEncodedUpi"
+          alt="UPI QR"
+          style="width: 160px; height: 160px; display: block; margin: 0 auto; border-radius: 8px; background: #fff; padding: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);"
+        >
+        <div style="font-size: 11.5px; color: #64748B; margin-top: 6px;">
+          Payee: <b>{{ tenantService.activeBranch.upi_vpa || 'brewbeans@icici' }}</b>
+        </div>
+      </div>
+
+      <!-- Cash Received Box -->
+      <div *ngIf="tableSettleMode === 'CASH'" class="form-group">
+        <label class="form-label">Cash Tendered (₹):</label>
+        <input
+          type="number"
+          [(ngModel)]="tableSettleCashReceived"
+          class="form-control"
+          style="font-size: 18px; font-weight: 700;"
+        >
+        <div *ngIf="tableSettleCashReceived >= tableSettlingOrder.total_amount" style="font-size: 13px; color: #15803D; margin-top: 6px; font-weight: 600;">
+          Change Due: ₹{{ (tableSettleCashReceived - tableSettlingOrder.total_amount) | number:'1.2-2' }}
+        </div>
+      </div>
+
+      <!-- Card Box -->
+      <div *ngIf="tableSettleMode === 'CARD'" style="padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; color: #475569;">
+        <i class="ri-bank-card-line"></i> Swipe or Tap credit/debit card on EDC POS machine for <b>₹{{ tableSettlingOrder.total_amount | number:'1.2-2' }}</b>.
+      </div>
+    </div>
+
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC;">
+      <button class="btn btn-secondary" (click)="showTableSettleModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="confirmTableSettlement()">
+        ✅ Confirm & Settle ₹{{ tableSettlingOrder.total_amount | number:'1.2-2' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,339 @@
+<div class="dashboard-page">
+  <!-- Page Header -->
+  <div class="page-title-row">
+    <div>
+      <h1 class="page-title">Dashboard & Analytics</h1>
+      <p class="page-subtitle">Real-time dynamic overview of sales, live table status, kitchen throughput, and menu performance</p>
+    </div>
+
+    <!-- Report Switcher Pills -->
+    <div class="report-tabs">
+      <button class="filter-pill" [class.active]="activeReport === 'dashboard'" (click)="activeReport = 'dashboard'">
+        <i class="ri-dashboard-line"></i> Overview
+      </button>
+      <button class="filter-pill" [class.active]="activeReport === 'peakhours'" (click)="activeReport = 'peakhours'">
+        <i class="ri-time-line"></i> Peak Hours
+      </button>
+      <button class="filter-pill" [class.active]="activeReport === 'velocity'" (click)="activeReport = 'velocity'">
+        <i class="ri-speed-up-line"></i> Menu Velocity
+      </button>
+      <button class="filter-pill" [class.active]="activeReport === 'retention'" (click)="activeReport = 'retention'">
+        <i class="ri-user-heart-line"></i> Retention
+      </button>
+      <button class="btn btn-secondary btn-sm" (click)="exportVelocityCsv()">
+        <i class="ri-download-2-line"></i> Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div *ngIf="activeReport === 'dashboard'" class="dashboard-content">
+    <!-- Sleek Analytics Window Selector Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 8px 16px; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <i class="ri-calendar-event-line" style="color: #881337; font-size: 18px;"></i>
+        <span style="font-size: 13.5px; font-weight: 700; color: #0F172A;">Analytics Window:</span>
+        <div style="width: 250px;">
+          <app-custom-select
+            [options]="timeframeOptions"
+            [(ngModel)]="selectedTimeframe"
+            size="sm"
+            menuMinWidth="250px"
+          ></app-custom-select>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge badge-occupied" style="font-size: 11px; padding: 4px 10px; background-color: #FFF1F2; color: #881337; font-weight: 700;">
+          {{ timeframeTitle }} Performance
+        </span>
+      </div>
+    </div>
+
+    <!-- Top 4 Metric Cards -->
+    <div class="metrics-row">
+      <!-- Card 1: Revenue -->
+      <div class="metric-card card">
+        <div class="metric-header">
+          <span class="metric-label">{{ timeframeTitle }} Gross Revenue</span>
+          <div class="metric-icon-box icon-green">
+            <i class="ri-money-rupee-circle-line"></i>
+          </div>
+        </div>
+        <div class="metric-value">₹{{ displayedRevenue | number:'1.2-2' }}</div>
+        <div class="metric-subtitle">
+          💵 Cash: ₹{{ displayedCash | number:'1.0-0' }} • 📱 UPI: ₹{{ displayedUpi | number:'1.0-0' }}
+        </div>
+      </div>
+
+      <!-- Card 2: Orders -->
+      <div class="metric-card card">
+        <div class="metric-header">
+          <span class="metric-label">{{ timeframeTitle }} Orders</span>
+          <div class="metric-icon-box icon-red">
+            <i class="ri-shopping-bag-3-line"></i>
+          </div>
+        </div>
+        <div class="metric-value">{{ displayedOrders | number:'1.0-0' }}</div>
+        <div class="metric-subtitle">
+          Avg Bill: ₹{{ (displayedRevenue / (displayedOrders || 1)) | number:'1.0-0' }} per order
+        </div>
+      </div>
+
+      <!-- Card 3: Occupied Tables -->
+      <div class="metric-card card">
+        <div class="metric-header">
+          <span class="metric-label">Occupied Tables</span>
+          <div class="metric-icon-box icon-red">
+            <i class="ri-layout-grid-line"></i>
+          </div>
+        </div>
+        <div class="metric-value">{{ kpis.active_tables_count || 0 }} / {{ kpis.total_tables_count || 0 }}</div>
+        <div class="metric-subtitle">
+          Live Occupancy: {{ kpis.occupancy_rate_pct || 0 }}%
+        </div>
+      </div>
+
+      <!-- Card 4: Kitchen Queue -->
+      <div class="metric-card card">
+        <div class="metric-header">
+          <span class="metric-label">Kitchen Queue</span>
+          <div class="metric-icon-box icon-orange">
+            <i class="ri-fire-line"></i>
+          </div>
+        </div>
+        <div class="metric-value">{{ kpis.pending_kot_count || 0 }} KOTs</div>
+        <div class="metric-subtitle">
+          Avg Prep Time: {{ kpis.avg_prep_time_mins || 8.4 }} mins
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom 3 Breakdown Cards -->
+    <div class="breakdown-row">
+      <!-- Tables Breakdown -->
+      <div class="breakdown-card card">
+        <div class="card-head">
+          <div class="head-with-icon">
+            <i class="ri-table-line" style="font-size: 16px; color: var(--primary);"></i>
+            <h3>Floor Tables Status</h3>
+          </div>
+        </div>
+        <div class="breakdown-list">
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-green"></span>
+              <span>Available</span>
+            </div>
+            <span class="item-count">{{ tableBreakdown.available }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-red"></span>
+              <span>Occupied</span>
+            </div>
+            <span class="item-count">{{ tableBreakdown.occupied }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-yellow"></span>
+              <span>Reserved</span>
+            </div>
+            <span class="item-count">{{ tableBreakdown.reserved }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-grey"></span>
+              <span>Cleaning</span>
+            </div>
+            <span class="item-count">{{ tableBreakdown.cleaning }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kitchen Queue Breakdown -->
+      <div class="breakdown-card card">
+        <div class="card-head">
+          <div class="head-with-icon">
+            <span style="font-size: 15px;">👨‍🍳</span>
+            <h3>Kitchen Queue Breakdown</h3>
+          </div>
+        </div>
+        <div class="breakdown-list">
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-maroon"></span>
+              <span>New (Unprepared)</span>
+            </div>
+            <span class="item-count">{{ kitchenBreakdown.new }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-yellow"></span>
+              <span>Accepted</span>
+            </div>
+            <span class="item-count">{{ kitchenBreakdown.accepted }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-orange"></span>
+              <span>Preparing</span>
+            </div>
+            <span class="item-count">{{ kitchenBreakdown.preparing }}</span>
+          </div>
+          <div class="breakdown-item">
+            <div class="item-left">
+              <span class="status-dot dot-green"></span>
+              <span>Ready for Pickup</span>
+            </div>
+            <span class="item-count">{{ kitchenBreakdown.ready }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="breakdown-card card">
+        <div class="card-head">
+          <div class="head-with-icon">
+            <span style="font-size: 15px;">⏱️</span>
+            <h3>Live Recent Orders</h3>
+          </div>
+        </div>
+        <div class="recent-orders-list">
+          <div *ngIf="recentTransactions.length === 0" style="padding: 12px 0; text-align: center; color: var(--text-muted); font-size: 13px;">
+            No orders logged yet.
+          </div>
+          <div class="transaction-row" *ngFor="let tx of recentTransactions">
+            <div class="tx-left">
+              <div class="tx-id">#{{ tx.order_number }}</div>
+              <span class="tx-badge">{{ tx.order_type.replace('_', ' ') }}</span>
+              <span style="font-size: 11px; color: var(--text-muted);">
+                {{ tx.table_number ? 'T-' + tx.table_number.replace('T-', '') : (tx.customer_name || 'Takeaway') }}
+              </span>
+            </div>
+            <div class="tx-right">
+              <span class="tx-amount">₹{{ tx.total_amount | number:'1.2-2' }}</span>
+              <span class="tx-status-badge" [ngClass]="tx.is_settled ? 'status-settled' : 'status-active'">
+                {{ tx.is_settled ? 'PAID' : (tx.status || 'ACTIVE') }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PEAK HOURS TAB -->
+  <div *ngIf="activeReport === 'peakhours'" class="dashboard-content card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h3>Peak Hours Footfall & Sales Heatmap</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+          Automatically aggregates hourly order frequency and sales volume.
+        </p>
+      </div>
+      <button class="btn btn-secondary btn-sm" (click)="exportPeakHoursCsv()">
+        <i class="ri-download-2-line"></i> Export Heatmap
+      </button>
+    </div>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time Window</th>
+            <th>Orders Placed</th>
+            <th>Sales Volume</th>
+            <th>Kitchen & Service Intensity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of peakHours">
+            <td><strong>{{ p.hour_label }}</strong></td>
+            <td><b>{{ p.order_count }}</b> bills</td>
+            <td>₹{{ p.sales_amount | number:'1.2-2' }}</td>
+            <td>
+              <span class="badge" [class.badge-success]="p.occupancy_intensity < 60" [class.badge-warning]="p.occupancy_intensity >= 60 && p.occupancy_intensity < 85" [class.badge-danger]="p.occupancy_intensity >= 85">
+                {{ p.occupancy_intensity }}% Load
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VELOCITY & MARGINS TAB -->
+  <div *ngIf="activeReport === 'velocity'" class="dashboard-content card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <h3>Menu Item Sales Velocity & Cost Margins</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+          Dynamically ranked by popularity and profit margins.
+        </p>
+      </div>
+      <button class="btn btn-secondary btn-sm" (click)="exportVelocityCsv()">
+        <i class="ri-download-2-line"></i> Export Velocity CSV
+      </button>
+    </div>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Dish Name</th>
+            <th>Category</th>
+            <th>Qty Sold</th>
+            <th>Gross Sales</th>
+            <th>Raw Ingredient Cost</th>
+            <th>Gross Margin %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of salesVelocity">
+            <td><strong>#{{ s.velocity_rank }}</strong></td>
+            <td><b>{{ s.item_name }}</b></td>
+            <td><span class="badge badge-bill-requested">{{ s.category_name }}</span></td>
+            <td><b>{{ s.quantity_sold }}</b></td>
+            <td>₹{{ s.gross_revenue | number:'1.2-2' }}</td>
+            <td style="color: var(--text-muted);">₹{{ s.ingredient_cost | number:'1.2-2' }}</td>
+            <td>
+              <span class="badge badge-success">{{ s.gross_margin_pct }}%</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RETENTION TAB -->
+  <div *ngIf="activeReport === 'retention'" class="dashboard-content card">
+    <div style="margin-bottom: 20px;">
+      <h3>Customer Loyalty & Retention Performance</h3>
+      <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+        Live analytics from CRM membership, repeat customer visits, and loyalty redemptions.
+      </p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">REPEAT VISIT RATE</span>
+        <div style="font-size: 28px; font-weight: 800; color: #16A34A; margin-top: 6px;">{{ retention.repeat_customers_pct }}%</div>
+        <span style="font-size: 11px; color: var(--text-muted);">Guests with 2+ visits</span>
+      </div>
+      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">REGISTERED MEMBERS</span>
+        <div style="font-size: 28px; font-weight: 800; color: #0F172A; margin-top: 6px;">{{ retention.total_registered_customers }}</div>
+        <span style="font-size: 11px; color: var(--text-muted);">+{{ retention.new_customers_this_month }} joined this month</span>
+      </div>
+      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">AVG SPEND PER GUEST</span>
+        <div style="font-size: 28px; font-weight: 800; color: #4F46E5; margin-top: 6px;">₹{{ retention.avg_spend_per_customer }}</div>
+        <span style="font-size: 11px; color: var(--text-muted);">Average order value</span>
+      </div>
+      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">LOYALTY POINTS REDEEMED</span>
+        <div style="font-size: 28px; font-weight: 800; color: #881337; margin-top: 6px;">₹{{ retention.points_redeemed_value | number:'1.0-0' }}</div>
+        <span style="font-size: 11px; color: var(--text-muted);">Rewards savings delivered</span>
+      </div>
+    </div>
+  </div>
+</div>

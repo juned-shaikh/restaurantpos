@@ -1,0 +1,301 @@
+<div class="saas-view">
+  <!-- Top Header -->
+  <div class="view-header">
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="saas-badge"><i class="ri-vip-crown-2-line" style="margin-right: 4px;"></i> PLATFORM VENDOR</span>
+        <h2>Super Admin — SaaS Subscription Control</h2>
+      </div>
+      <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+        Manage all onboarded cafe clients, active subscriptions, monthly recurring revenue (MRR), and licenses.
+      </p>
+    </div>
+
+    <button class="btn btn-primary btn-lg" (click)="openOnboardModal()">
+      <i class="ri-add-line" style="margin-right: 4px;"></i> Onboard New Cafe Client
+    </button>
+  </div>
+
+  <!-- SaaS Metrics Grid -->
+  <div class="metrics-grid">
+    <div class="metric-card card">
+      <span class="m-label">MONTHLY RECURRING REVENUE (MRR)</span>
+      <div class="m-val" style="color: var(--success);">₹{{ mrrAmount | number:'1.0-0' }}</div>
+      <span class="m-sub">Recurring subscription billing</span>
+    </div>
+
+    <div class="metric-card card">
+      <span class="m-label">TOTAL CAFE CLIENTS</span>
+      <div class="m-val" style="color: var(--text-main);">{{ totalCafes }} Cafes</div>
+      <span class="m-sub">Across {{ totalOutlets }} physical outlets</span>
+    </div>
+
+    <div class="metric-card card">
+      <span class="m-label">ACTIVE 14-DAY TRIALS</span>
+      <div class="m-val" style="color: #FBBF24;">{{ activeTrialsCount }} Cafes</div>
+      <span class="m-sub">Prospective paying conversions</span>
+    </div>
+
+    <div class="metric-card card">
+      <span class="m-label">PLATFORM UPTIME</span>
+      <div class="m-val" style="color: var(--info);">99.98%</div>
+      <span class="m-sub">Supabase PostgreSQL Hosted</span>
+    </div>
+  </div>
+
+  <!-- Cafe Clients Directory -->
+  <div class="card client-table-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3>Registered Cafe Clients (Tenants)</h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Real-time Multi-Tenant Isolation Active (Auto-Saved)</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Cafe Name / Brand</th>
+            <th>Owner Details</th>
+            <th>City</th>
+            <th>Outlets</th>
+            <th>Subscription Tier</th>
+            <th>Monthly Fee</th>
+            <th>Renewal / Expiry</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of tenants">
+            <td>
+              <b>{{ t.name }}</b>
+              <div style="font-size: 11px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">
+                subdomain: {{ t.slug }}.yourapp.com
+              </div>
+            </td>
+            <td>
+              <div><b>{{ t.owner_name }}</b></div>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ t.owner_email }}</div>
+              <div style="font-size: 11px; color: var(--text-muted);">{{ t.owner_phone }}</div>
+            </td>
+            <td>{{ t.city }}</td>
+            <td><b>{{ t.active_outlets || 1 }} / {{ t.max_branches }}</b></td>
+            <td>
+              <span class="badge" [class.badge-available]="t.tier === 'GROWTH' || t.tier === 'ENTERPRISE'" [class.badge-bill-requested]="t.tier === 'STARTER'" [class.badge-reserved]="t.tier === 'TRIAL'">
+                {{ t.tier }}
+              </span>
+            </td>
+            <td><b style="color: var(--success); font-size: 14px;">₹{{ t.monthly_revenue | number:'1.0-0' }}/mo</b></td>
+            <td>
+              <span style="font-size: 12px;">
+                {{ getTenantExpiry(t) | date:'mediumDate' }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" [class.badge-available]="t.is_active" [class.badge-occupied]="!t.is_active">
+                {{ t.is_active ? 'ACTIVE' : 'SUSPENDED' }}
+              </span>
+            </td>
+            <td>
+              <button
+                class="btn btn-sm"
+                [class.btn-danger]="t.is_active"
+                [class.btn-success]="!t.is_active"
+                (click)="toggleTenantStatus(t)"
+              >
+                {{ t.is_active ? 'Suspend' : 'Activate' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Onboard New Cafe Client Modal -->
+<div class="modal-overlay" *ngIf="showOnboardModal">
+  <div class="modal-content" style="max-width: 550px;">
+    <h3>Onboard New Cafe Enterprise (Tenant)</h3>
+    <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px;">
+      Creates a new isolated organization in PostgreSQL with instant branch & owner login credentials.
+    </p>
+
+    <div class="form-group">
+      <label class="form-label">Cafe / Restaurant Business Name</label>
+      <input class="form-control" placeholder="e.g. Blue Lagoon Specialty Cafe" [(ngModel)]="newCafeName">
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="form-group">
+        <label class="form-label">Cafe Owner / Partner Name</label>
+        <input class="form-control" placeholder="e.g. Sameer Kapoor" [(ngModel)]="newOwnerName">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Owner Mobile (+91)</label>
+        <input class="form-control" placeholder="98200 12345" [(ngModel)]="newPhone">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div class="form-group">
+        <label class="form-label">Owner Email (User ID)</label>
+        <input class="form-control" placeholder="sameer@lagooncafe.in" [(ngModel)]="newEmail">
+      </div>
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <input class="form-control" placeholder="Mumbai" [(ngModel)]="newCity">
+      </div>
+    </div>
+
+    <!-- Owner Password Configuration Field -->
+    <div class="form-group" style="margin-top: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label class="form-label" style="margin: 0; font-weight: 700;">Owner Login Password</label>
+        <button
+          type="button"
+          class="btn btn-xs btn-outline"
+          (click)="generateRandomPassword()"
+          title="Auto generate a secure unique password"
+          style="padding: 2px 8px; font-size: 11px; border-color: #CBD5E1; color: #475569;"
+        >
+          🎲 Auto-Generate
+        </button>
+      </div>
+      <div style="position: relative; display: flex; align-items: center;">
+        <input
+          [type]="showPassword ? 'text' : 'password'"
+          class="form-control"
+          placeholder="e.g. Owner@123 or Cafe#7294"
+          [(ngModel)]="newPassword"
+          style="padding-right: 42px; font-family: monospace; font-size: 14px; font-weight: 600;"
+        >
+        <button
+          type="button"
+          (click)="showPassword = !showPassword"
+          style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748B; font-size: 16px;"
+          title="Toggle visibility"
+        >
+          <i [class]="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+        </button>
+      </div>
+      <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">
+        The restaurant owner will log in at <code>/login</code> using this email and password.
+      </small>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px; align-items: flex-end; margin-top: 10px;">
+      <div class="form-group">
+        <label class="form-label">Select SaaS Subscription Plan</label>
+        <app-custom-select
+          [options]="tierOptions"
+          [(ngModel)]="newTier"
+        ></app-custom-select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Max Branches</label>
+        <input type="number" min="1" max="20" class="form-control" [(ngModel)]="newMaxBranches">
+      </div>
+    </div>
+
+    <!-- Starter Setup Options -->
+    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-top: 14px;">
+      <div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+        <i class="ri-magic-line" style="color: #6366F1;"></i> Starter Template Setup
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #475569;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" [(ngModel)]="seedStarterMenu" style="width: 16px; height: 16px; accent-color: #7A1C2E;">
+          <span>Pre-load Starter Menu (Standard Beverages, Coolers, Snacks & Desserts)</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" [(ngModel)]="seedStarterTables" style="width: 16px; height: 16px; accent-color: #7A1C2E;">
+          <span>Pre-load Starter Floor & Tables (Main Dining Hall with T-01 to T-06)</span>
+        </label>
+      </div>
+      <small style="display: block; margin-top: 6px; font-size: 11px; color: #64748B;">
+        Uncheck both if the restaurant wants a completely blank canvas (0 dishes, 0 tables) to input from scratch.
+      </small>
+    </div>
+
+    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+      <button class="btn btn-secondary" (click)="showOnboardModal = false">Cancel</button>
+      <button class="btn btn-primary btn-lg" (click)="onboardNewCafe()">
+        <i class="ri-rocket-line" style="margin-right: 6px;"></i> Provision Cafe & Generate Instance
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Handover Credentials Modal (Share ID & Password with Owner) -->
+<div class="modal-overlay" *ngIf="showCredentialsModal && createdCredentials">
+  <div class="modal-content" style="max-width: 540px; border-top: 4px solid #16A34A;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 6px; background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-bottom: 6px;">
+          <i class="ri-checkbox-circle-fill"></i> Instance Active & Ready
+        </div>
+        <h3 style="margin: 0; font-size: 18px; color: #0F172A;">Restaurant Registered Successfully! 🎉</h3>
+      </div>
+      <button class="btn btn-xs btn-outline" (click)="showCredentialsModal = false">✕</button>
+    </div>
+
+    <p style="color: #64748B; font-size: 12.5px; margin-bottom: 16px;">
+      Share these login credentials with the restaurant owner. They can now log in immediately from any browser or tablet:
+    </p>
+
+    <!-- Credentials Card Box -->
+    <div style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+        <span style="font-size: 12px; color: #64748B; font-weight: 600;">Restaurant / Brand:</span>
+        <b style="font-size: 14px; color: #0F172A;">{{ createdCredentials.cafeName }}</b>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+        <span style="font-size: 12px; color: #64748B; font-weight: 600;">Login Portal Link:</span>
+        <a [href]="createdCredentials.loginUrl" target="_blank" style="font-size: 12.5px; color: #2563EB; font-weight: 600; text-decoration: underline;">
+          {{ createdCredentials.loginUrl }}
+        </a>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+        <span style="font-size: 12px; color: #64748B; font-weight: 600;">User ID / Login Email:</span>
+        <b style="font-size: 13.5px; color: #0F172A; font-family: monospace;">{{ createdCredentials.email }}</b>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+        <span style="font-size: 12px; color: #64748B; font-weight: 600;">Owner Login Password:</span>
+        <b style="font-size: 15px; color: #881337; font-family: monospace; background: #FFF1F2; padding: 2px 8px; border-radius: 4px; border: 1px solid #FECDD3;">
+          {{ createdCredentials.password }}
+        </b>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; color: #64748B; font-weight: 600;">Manager Override PIN:</span>
+        <b style="font-size: 13.5px; color: #0F172A; font-family: monospace;">{{ createdCredentials.managerPin }}</b>
+      </div>
+    </div>
+
+    <!-- Copy Status Notification -->
+    <div *ngIf="copiedNotice" style="background: #DCFCE7; color: #166534; font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+      <i class="ri-check-line" style="font-size: 16px;"></i>
+      Login credentials formatted & copied to clipboard! Paste directly into WhatsApp or Email.
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button class="btn btn-outline" (click)="copyCredentialsToClipboard()" style="display: flex; align-items: center; gap: 6px;">
+        <i class="ri-file-copy-line"></i> Copy for WhatsApp / SMS
+      </button>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" (click)="showCredentialsModal = false">
+          Done
+        </button>
+        <button class="btn btn-primary" (click)="switchToCreatedCafe(createdCredentials.tenantId)">
+          <i class="ri-arrow-right-line"></i> Open This Restaurant
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

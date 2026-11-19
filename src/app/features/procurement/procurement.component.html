@@ -1,0 +1,150 @@
+<div class="procurement-view">
+  <div class="view-header">
+    <div>
+      <h2>Procurement & Supplier Management</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">
+        Vendor quotations, Purchase Orders (PO), Goods Receipt Notes (GRN), and vendor scorecard.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'orders'" [class.btn-secondary]="activeTab !== 'orders'" (click)="activeTab = 'orders'">
+        Purchase Orders ({{ purchaseOrders.length }})
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'suppliers'" [class.btn-secondary]="activeTab !== 'suppliers'" (click)="activeTab = 'suppliers'">
+        Suppliers Directory ({{ suppliers.length }})
+      </button>
+      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'grn'" [class.btn-secondary]="activeTab !== 'grn'" (click)="activeTab = 'grn'">
+        Goods Receipt Notes ({{ grnList.length }})
+      </button>
+      <button class="btn btn-sm btn-primary" (click)="showPoModal = true">
+        + Create PO
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 1: PURCHASE ORDERS -->
+  <div *ngIf="activeTab === 'orders'" class="card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PO Number</th>
+          <th>Vendor / Supplier</th>
+          <th>Order Date</th>
+          <th>Expected Delivery</th>
+          <th>Total Amount</th>
+          <th>Created By</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let po of purchaseOrders">
+          <td><b>{{ po.po_number }}</b></td>
+          <td>{{ po.supplier_name }}</td>
+          <td>{{ po.created_at | date:'mediumDate' }}</td>
+          <td>{{ po.expected_delivery }}</td>
+          <td><b>₹{{ po.total_amount | number:'1.2-2' }}</b></td>
+          <td>{{ po.created_by_name }}</td>
+          <td><span class="badge badge-bill-requested">{{ po.status }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TAB 2: SUPPLIERS DIRECTORY -->
+  <div *ngIf="activeTab === 'suppliers'" class="suppliers-grid">
+    <div *ngFor="let sup of suppliers" class="supplier-card card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h3>{{ sup.name }}</h3>
+          <span style="font-size: 12px; color: var(--text-muted);">Contact: {{ sup.contact_person }}</span>
+        </div>
+        <span class="badge badge-available">★ {{ sup.rating }}</span>
+      </div>
+
+      <div style="margin: 12px 0; font-size: 13px; display: flex; flex-direction: column; gap: 4px;">
+        <div>📞 {{ sup.phone }}</div>
+        <div>✉️ {{ sup.email }}</div>
+        <div>📍 {{ sup.address }}</div>
+        <div *ngIf="sup.gstin" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim);">
+          GSTIN: {{ sup.gstin }}
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; font-size: 12px; border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+        <span>Payment Credit Terms:</span>
+        <b>{{ sup.payment_terms_days }} Days</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: GOODS RECEIPT NOTES -->
+  <div *ngIf="activeTab === 'grn'" class="card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>GRN Number</th>
+          <th>Supplier</th>
+          <th>Supplier Invoice No</th>
+          <th>Received Date</th>
+          <th>Total Received Value</th>
+          <th>Received By</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let grn of grnList">
+          <td><b>{{ grn.grn_number }}</b></td>
+          <td>{{ grn.supplier_name }}</td>
+          <td>{{ grn.supplier_invoice_no }}</td>
+          <td>{{ grn.received_date | date:'medium' }}</td>
+          <td><b style="color: var(--success);">₹{{ grn.total_value | number:'1.2-2' }}</b></td>
+          <td>{{ grn.received_by_name }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create PO Modal -->
+<div class="modal-overlay" *ngIf="showPoModal" (click)="showPoModal = false">
+  <div class="modal-dialog" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h3>Create Purchase Order (PO)</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 3px 0 0 0;">
+          Issue procurement request to authorized supplier.
+        </p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="showPoModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Supplier</label>
+        <app-custom-select
+          [options]="supplierOptions"
+          [(ngModel)]="selectedSupplierId"
+          placeholder="Select supplier..."
+        ></app-custom-select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Estimated PO Amount (₹)</label>
+        <input type="number" class="form-control" placeholder="15000" [(ngModel)]="poAmount">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Special Delivery Instructions</label>
+        <textarea class="form-control" rows="2" placeholder="e.g. Deliver before 10 AM before morning rush" [(ngModel)]="poNotes"></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showPoModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="createPo()">Generate & Send PO</button>
+    </div>
+  </div>
+</div>
+

@@ -1,16 +1,16 @@
-// This file can be replaced during build by using the `fileReplacements` array.
-// `ng build` replaces `environment.ts` with `environment.prod.ts`.
-// The list of file replacements can be found in `angular.json`.
-
 export const environment = {
-  production: false
+  production: false,
+  supabaseUrl: 'https://csgfkqfffafjjlhmoygc.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzZ2ZrcWZmZmFmampsaG1veWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyMjQ1MzAsImV4cCI6MjEwOTgwMDUzMH0.2XmDNtYerw4ltuJLpJ3pRV_EAtzBOu63rdEmzLY4hzU',
+  restaurant: {
+    name: 'The Royal Grand Bistro',
+    legalName: 'Royal Grand Food & Hospitality Pvt Ltd',
+    address: '120 Ring Road, Connaught Place, New Delhi',
+    phone: '+91 98765 43210',
+    gstNumber: '07AAAAA0000A1Z5',
+    currency: 'INR',
+    currencySymbol: '₹',
+    upiVpa: 'royalgrand@upi',
+    upiPayeeName: 'The Royal Grand Bistro'
+  }
 };
-
-/*
- * For easier debugging in development mode, you can import the following file
- * to ignore zone related error stack frames such as `zone.run`, `zoneDelegate.invokeTask`.
- *
- * This import should be commented out in production mode because it will have a negative impact
- * on performance if an error is thrown.
- */
-// import 'zone.js/plugins/zone-error';  // Included with Angular CLI.

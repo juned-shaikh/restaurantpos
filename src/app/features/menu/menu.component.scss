@@ -1,0 +1,146 @@
+.menu-page {
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 2px;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #64748B;
+}
+
+/* Two Column Layout */
+.menu-layout-grid {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .menu-layout-grid {
+    flex-direction: column;
+  }
+  .categories-box {
+    width: 100% !important;
+  }
+}
+
+/* Left Categories Box */
+.categories-box {
+  width: 240px;
+  flex-shrink: 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.categories-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94A3B8;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.category-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+
+.cat-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.12s ease;
+
+  &:hover {
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  &.active {
+    background-color: #FFF1F2;
+    color: #881337;
+    font-weight: 600;
+
+    .cat-count {
+      color: #881337;
+    }
+  }
+}
+
+.cat-count {
+  font-size: 11.5px;
+  color: #94A3B8;
+}
+
+.add-cat-btn {
+  width: 100%;
+  border-radius: 8px;
+}
+
+/* Right Items Table Card */
+.items-table-card {
+  flex: 1;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 18px;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.items-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.items-search {
+  width: 200px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  outline: none;
+  box-sizing: border-box;
+}

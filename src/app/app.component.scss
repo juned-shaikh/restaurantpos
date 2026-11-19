@@ -1,0 +1,133 @@
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-width: 0; /* Prevents flex children from causing horizontal blowout */
+  overflow: hidden;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 24px;
+  background-color: var(--bg-main);
+  min-width: 0;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile & Tablet Responsive Adjustments */
+@media (max-width: 768px) {
+  .page-content {
+    padding: 12px 10px;
+  }
+}
+
+/* Security PIN Touch Numpad & Dialog */
+.security-pin-dialog {
+  max-width: 360px !important;
+}
+
+.pin-display-strip {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 12px 0 16px 0;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #CBD5E1;
+  background-color: transparent;
+  transition: all 0.15s ease;
+
+  &.filled {
+    border-color: #881337;
+    background-color: #881337;
+    transform: scale(1.15);
+  }
+}
+
+.pin-error-notice {
+  font-size: 12px;
+  font-weight: 600;
+  color: #DC2626;
+  background: #FEE2E2;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+}
+
+.pos-numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.numpad-btn {
+  height: 52px;
+  border: 1px solid #E2E8F0;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0F172A;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    background-color: #F8FAFC;
+    border-color: #CBD5E1;
+  }
+
+  &:active {
+    background-color: #F1F5F9;
+    transform: scale(0.96);
+  }
+
+  &.numpad-action {
+    background-color: #F8FAFC;
+    color: #DC2626;
+    font-size: 17px;
+  }
+
+  &.numpad-submit {
+    background-color: #881337;
+    color: #FFFFFF;
+    border-color: #881337;
+    font-size: 15px;
+
+    &:hover {
+      background-color: #701A75;
+    }
+  }
+}

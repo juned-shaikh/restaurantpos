@@ -1,0 +1,116 @@
+<header class="app-header">
+  <div class="header-left">
+    <!-- Mobile Hamburger Menu Button -->
+    <button class="hamburger-btn" (click)="toggleSidebar()" title="Toggle Navigation Menu">
+      <i class="ri-menu-line hamburger-icon"></i>
+    </button>
+
+    <!-- Live sync status badge with Offline fallback -->
+    <div class="sync-badge" [class.live]="supabaseService.isConnected && (offlineSync.isOnline$ | async)" [class.offline]="!(offlineSync.isOnline$ | async)">
+      <span class="sync-dot"></span>
+      <span class="sync-text" *ngIf="(offlineSync.isOnline$ | async)">
+        {{ supabaseService.isConnected ? 'Cloud Online' : 'Demo Local Mode' }}
+      </span>
+      <span class="sync-text" *ngIf="!(offlineSync.isOnline$ | async)">
+        Offline Mode ({{ (offlineSync.queuedCount$ | async) || 0 }} Queued)
+      </span>
+      <button *ngIf="(offlineSync.queuedCount$ | async)! > 0" class="sync-now-btn" (click)="syncOfflineOrders()" title="Sync queued orders to cloud">
+        <i class="ri-refresh-line"></i> Sync
+      </button>
+    </div>
+
+    <div class="header-clock">
+      <span>{{ currentTimeString }}</span>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <!-- Table Guest Alerts Bell -->
+    <div class="alerts-wrapper">
+      <button class="icon-action-btn" (click)="toggleRequests()" title="Guest Alerts">
+        <i class="ri-notification-3-line icon"></i>
+        <span class="alert-count-dot" *ngIf="guestRequests.length > 0">{{ guestRequests.length }}</span>
+      </button>
+
+      <!-- Dropdown -->
+      <div class="alerts-dropdown card" *ngIf="showRequestsDropdown">
+        <div class="dropdown-header">
+          <span class="title">Table Alerts ({{ guestRequests.length }})</span>
+        </div>
+        <div class="dropdown-body">
+          <div *ngIf="guestRequests.length === 0" class="empty-text">No active guest requests</div>
+          <div *ngFor="let req of guestRequests" class="alert-item">
+            <div>
+              <strong>Table {{ req.table_number }}</strong>
+              <div class="req-sub">{{ req.request_type }}</div>
+            </div>
+            <button class="btn btn-sm btn-primary" (click)="resolveRequest(req.id)">Resolve</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme icon (sun) -->
+    <button class="icon-action-btn" title="Toggle Theme">
+      <i class="ri-sun-line icon"></i>
+    </button>
+
+    <!-- User Profile & Dropdown -->
+    <div style="position: relative;">
+      <div class="user-profile-pill" (click)="toggleUserDropdown()" style="cursor: pointer;" title="Account & Cafe Switcher">
+        <div class="user-avatar-circle">
+          {{ (currentUser?.full_name?.substring(0, 2) || 'DO').toUpperCase() }}
+        </div>
+        <span class="user-display-name">{{ currentUser?.full_name || 'Staff' }}</span>
+        <i class="ri-arrow-down-s-line" style="font-size: 14px; color: #64748B; margin-left: 2px;"></i>
+      </div>
+
+      <!-- User Dropdown Menu -->
+      <div class="user-dropdown-menu" *ngIf="showUserDropdown">
+        <div class="dropdown-user-header">
+          <div style="font-weight: 700; color: #0F172A; font-size: 13.5px;">{{ currentUser?.full_name }}</div>
+          <div style="font-size: 11px; color: #64748B;">Role: <b style="color: #881337;">{{ currentUser?.role }}</b></div>
+          <div style="font-size: 11px; color: #64748B; margin-top: 2px;">Cafe: {{ currentOrg.name }}</div>
+        </div>
+
+        <div class="dropdown-section-title">SWITCH CAFE (TENANT)</div>
+        <button
+          *ngFor="let t of (tenantService.tenants$ | async)"
+          class="dropdown-item"
+          (click)="switchCafe(t.id)"
+          [style.fontWeight]="currentOrg.id === t.id ? '700' : 'normal'"
+        >
+          <i class="ri-store-2-line" style="color: #881337; font-size: 15px;"></i>
+          <span>{{ t.name }} ({{ t.city || 'Outlet' }})</span>
+        </button>
+
+        <div class="dropdown-section-title">FAST ROLE SWITCH (RBAC DEMO)</div>
+        <button class="dropdown-item" (click)="switchRole('ORG_ADMIN', 'Zuber (Manager)')">
+          <i class="ri-user-star-line" style="color: #4F46E5; font-size: 15px;"></i> Restaurant Manager (Full Access)
+        </button>
+        <button class="dropdown-item" (click)="switchRole('CASHIER', 'Pooja (Cashier)')">
+          <i class="ri-shopping-cart-2-line" style="color: #16A34A; font-size: 15px;"></i> Cashier (Billing & Tables Only)
+        </button>
+        <button class="dropdown-item" (click)="switchRole('WAITER', 'Priya (Floor Captain)')">
+          <i class="ri-restaurant-line" style="color: #D97706; font-size: 15px;"></i> Waiter (Tables & Orders Only)
+        </button>
+        <button class="dropdown-item" (click)="switchRole('KITCHEN_CHEF', 'Chef Vikram (Head Chef)')">
+          <i class="ri-fire-line" style="color: #DC2626; font-size: 15px;"></i> Kitchen Head Chef (KDS & Menu Only)
+        </button>
+
+        <div class="dropdown-divider"></div>
+        <a routerLink="/super-admin" class="dropdown-item" (click)="showUserDropdown = false">
+          <i class="ri-vip-crown-2-line" style="color: #D97706; font-size: 15px;"></i> Open SaaS Super Admin Portal
+        </a>
+        <a routerLink="/staff" class="dropdown-item" (click)="showUserDropdown = false">
+          <i class="ri-time-line" style="color: #0284C7; font-size: 15px;"></i> Staff Attendance & Clock-In Terminal
+        </a>
+
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item logout-btn" (click)="logout()">
+          <i class="ri-logout-box-r-line" style="color: #DC2626; font-size: 15px;"></i> Logout / Lock Terminal
+        </button>
+      </div>
+    </div>
+  </div>
+</header>

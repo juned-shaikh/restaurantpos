@@ -1,255 +1,136 @@
-# Restaurant POS & ERP — Angular + Supabase Master Blueprint
+# Multi-Tenant Cafe POS & ERP SaaS — Master Production Blueprint
 
-This blueprint captures the complete architectural, functional, and UI/UX specification of the Restaurant POS & Management System (`nodedr-orderrestro`), translated to an **Angular (v19+ Standalone & Signals) + Supabase (PostgreSQL, Auth, Realtime, Storage)** architecture.
-
----
-
-## 1. Tech Stack Translation
-
-| Component | Original Stack (Repo) | New Target Stack |
-|---|---|---|
-| **Frontend Framework** | Next.js 16 (React 19) + App Router | **Angular 19+** (Standalone Components, Signals, RxJS) |
-| **State Management** | TanStack Query + Zustand / Local State | **Angular Signals** + Computed Signals + Resource API |
-| **Styling & Design** | Tailwind CSS v4 + Base UI (shadcn) | **Tailwind CSS v4** + Custom Components / Lucide Angular |
-| **Icons** | Lucide React | **Lucide Angular** |
-| **Database** | Self-hosted PostgreSQL 16 + Prisma | **Supabase Hosted PostgreSQL** |
-| **Realtime / Live Updates**| NestJS Socket.IO Gateway | **Supabase Realtime (PostgreSQL Changes & Broadcast Channels)** |
-| **Authentication & RBAC** | Custom JWT (httpOnly cookie) + NestJS Guards | **Supabase Auth** + Postgres RLS + Custom RBAC Claims / Table |
-| **File Storage** | Local Disk (`/data/uploads`) | **Supabase Storage** (`menu-items`, `receipts`, `documents`) |
-| **Hosting & Deployment** | Docker Compose / VPS | **Vercel / Netlify / Cloudflare Pages** (Frontend) + **Supabase Cloud** (Backend) |
+This blueprint outlines the complete architecture, data models, and functional specifications of the **Restaurant & Cafe POS ERP SaaS Platform**, engineered specifically for multi-tenant subscription deployment across multiple independent cafe brands and outlets.
 
 ---
 
-## 2. Complete Module Breakdown (All 20 Modules)
+## 1. SaaS Multi-Tenancy Architecture
 
 ```mermaid
-mindmap
-  root((Restaurant POS & ERP))
-    Floor & Service
-      POS Billing
-      Visual Floor Plan
-      Kitchen Display KDS
-      QR Ordering & Kiosk
-      Reservations & Waitlist
-    Operations & Supply
-      Menu Management
-      Inventory & Costing
-      Procurement & Vendors
-      Waste Tracking FIFO
-    People & Money
-      Staff & Attendance
-      Payroll & Tip Pool
-      Accounting & Cash Close
-      Customer CRM & Loyalty
-    Growth & Governance
-      Analytics & 18 Reports
-      Marketing & Coupons
-      Role Based Access RBAC
-      Equipment & Maintenance
+graph TD
+    SAAS[👑 Super Admin SaaS Control] -->|Manages Subscriptions & Invoicing| ORG1[Tenant 1: Artisan Brew Cafe]
+    SAAS -->|Manages Subscriptions & Invoicing| ORG2[Tenant 2: The Roastery Club]
+    SAAS -->|Manages Subscriptions & Invoicing| ORG3[Tenant 3: Chai & QuickBites]
+
+    subgraph "Artisan Brew Cafe (Organization 1)"
+        ORG1 --> B1[Branch 1: Bandra Flagship]
+        ORG1 --> B2[Branch 2: CyberHub Outlet]
+        B1 --> POS1[POS Billing Terminal]
+        B1 --> KDS1[Kitchen Display System KDS]
+        B1 --> QR1[Customer QR Dine-in PWA]
+        B1 --> INV1[FIFO Recipe Costing & Stock]
+    end
+
+    subgraph "Data Isolation (PostgreSQL RLS)"
+        RLS[Row Level Security via organization_id & branch_id]
+    end
 ```
 
-### Module 1: Point of Sale (POS) & Billing
-* **Order Types:** Dine-in, Takeaway, Quick Sale, Delivery, QR Table Order.
-* **Menu Grid:** Category tabs, search with shortcut keys, item cards with modifier popup (sizes, add-ons, spice level, special instructions).
-* **Cart Operations:** Quantity increment/decrement, line-level discount, order-level discount (percentage or flat), customer attachment.
-* **Split Bill:** Split by seat/item, split equally across N persons.
-* **Tax Calculation:**
-  * India GST: 5% (2.5% CGST + 2.5% SGST) or custom slabs (12%, 18%).
-  * Inclusive vs. Exclusive pricing presets.
-* **Payment Tender:** Cash (with change return calculator), UPI QR code (dynamic NPCI intent string), Card, Split tender (Cash + UPI), Loyalty points redemption, Gift vouchers.
-* **Receipt Printing:** Printable receipt template (58mm / 80mm ESC/POS format or browser Print Dialog).
-
-### Module 2: Table & Floor Management
-* **Visual Floor Plan:** Drag-and-drop table layout per floor/section (Indoor, Terrace, Bar).
-* **Table States:** `AVAILABLE` (green), `OCCUPIED` (red/amber), `BILL_REQUESTED` (blue), `RESERVED` (purple).
-* **Table Operations:** Occupy, Open KOT, Transfer Table, Merge Tables, Call Waiter alert indicator.
-* **Waitlist Management:** Party size, contact number, estimated wait time, SMS/status flag.
-
-### Module 3: Kitchen Display System (KDS)
-* **Realtime Live Board:** KOTs organized into columns (Pending, Preparing, Ready, Served).
-* **Multi-station Routing:** Grill, Bar, Fryer, Bakery, Main Kitchen stations automatically split items based on item category.
-* **Ticket Card UI:** Table number, server name, order timer with color stages:
-  * Green: 0–10 mins
-  * Amber: 10–20 mins
-  * Red (Flashing/Urgent): > 20 mins
-* **Actions:** Item strike-through, complete ticket, bump ticket, reprint KOT.
-
-### Module 4: Menu Management
-* **Hierarchies:** Categories $\rightarrow$ Menu Items $\rightarrow$ Modifier Groups (Single-select / Multi-select) $\rightarrow$ Options.
-* **Combos:** Combo meals with selection groups (e.g., "Choose 1 Burger + 1 Drink + 1 Side").
-* **Availability Schedules:** Breakfast, Lunch, Dinner menus; out-of-stock toggle with instant realtime propagation to POS/QR.
-
-### Module 5 & 6: Inventory, Costing & Procurement
-* **Ingredients:** Unit of measure (kg, g, l, ml, pcs), reorder threshold, weighted-average unit cost.
-* **Recipes:** Sub-recipes and ingredient mapping per menu item.
-* **Automatic Consumption:** Stock deducted upon order completion (allows negative stock with warning flag to never block billing).
-* **Waste Logging:** FIFO batch deduction (oldest batches consumed first for accurate cost-of-waste).
-* **Procurement Cycle:** Purchase Request $\rightarrow$ Supplier Quotation $\rightarrow$ Purchase Order (PO) $\rightarrow$ Goods Receipt Note (GRN) with batch/expiry $\rightarrow$ Supplier Invoice & Payment.
-
-### Module 7: CRM, Loyalty & Referrals
-* **Customer Profile:** Spend history, favourite items, visit frequency, lifetime value (LTV).
-* **Loyalty Engine:** Configurable earn rate (e.g. 1 point per ₹100 spend) and redemption value (1 pt = ₹1).
-* **Referrals:** Sharer gets bonus points, referee gets discount on first order above minimum spend.
-
-### Module 8: Staff, Attendance & Payroll
-* **Clock In / Out:** PIN-based attendance terminal.
-* **Shifts:** Schedule shifts, clash detection, overtime tracking.
-* **Payroll:** Computed from clocked hours minus unpaid leave; Tip pool distribution proportional to hours worked.
-
-### Module 9 & 15: Accounting & Nightly Cash Closing
-* **Cash Closing (Day End):** Expected cash in drawer (opening balance + cash sales - cash refunds - petty expenses) vs. actual counted cash $\rightarrow$ Variance calculation with audit record.
-* **Expenses:** Category-wise petty cash and operational expenses.
-* **Financial Statements:** P&L summary, Tax liability summary (CGST/SGST collected vs paid on purchases).
-
-### Module 11: Guest QR Ordering & Self-Service Kiosk
-* **QR Table Ordering:** Table-specific QR token; guests browse menu, add modifiers, submit order, call waiter, or request bill directly from smartphone browser without installing any app.
-* **Kiosk Mode:** Fullscreen touch terminal for takeaway / dine-in orders with UPI QR payment.
-
-### Module 13: Analytics & Reporting
-* 18 Standard Reports: Sales summary, peak hours heatmap, category/item sales velocity, staff sales performance, food cost percentage, table turnover rate, tax report, export to CSV/Excel/PDF.
-
-### Module 18: Security & RBAC
-* Fine-grained permissions: `orders.create`, `orders.discount`, `menu.edit`, `reports.view`, `cash_close.manage`, etc.
-* Override capabilities per user on top of role.
+### 1.1 Multi-Tenant Data Isolation
+* Every database record is partitioned by `organization_id` (the cafe enterprise) and `branch_id` (the physical outlet).
+* PostgreSQL **Row-Level Security (RLS)** guarantees that Cafe A can NEVER view or mutate Cafe B's transactions, customers, recipes, or cash drawers.
+* **Supabase Realtime channels** are namespaced per branch: `branch-kds-${branchId}`, `branch-tables-${branchId}`, `branch-pos-${branchId}`.
 
 ---
 
-## 3. UI/UX Design System Specification
+## 2. Core Scoped Feature Modules (Exact 11 Requirements)
 
-### Color Tokens
+### Module 1: Table & Reservation Management
+* **Visual Floor Plan Canvas:** 2D interactive floor plan layout with capacity, coordinates, and shape (Square, Round, Rectangle).
+* **Live Table States:**
+  * `AVAILABLE` (Emerald green)
+  * `OCCUPIED` (Crimson red with live running bill indicator)
+  * `BILL_REQUESTED` (Flashing cyan blue alert upon guest QR request)
+  * `RESERVED` (Purple)
+* **Table Operations:** Occupy, Vacate, and seamless **Table Transfer** (transfers live items and bill from Table A to Table B with 1 click).
+* **Guest Waitlist:** Queue manager with party size, phone number, estimated wait time, and 1-click "Seat Guest at Table X".
+* **Reservations:** Advance booking calendar with guest requests and table allocations.
 
-```css
-/* Light Mode */
---background:         #FAFAFA;
---surface:            #FFFFFF;
---sidebar:            #FCFCFC;
---foreground:         #111827;
---muted-foreground:   #6B7280;
---border:             #E5E7EB;
---primary:            #9F1239; /* Wine/Burgundy - hospitality accent */
---primary-foreground: #FFFFFF;
---secondary:          #6D4AFF; /* Action violet */
---success:            #22C55E;
---warning:            #F59E0B;
---danger:             #EF4444;
+### Module 2: Kitchen Display System (KDS)
+* **Multi-station Ticket Routing:** Automatic item category routing to designated kitchen screens (e.g., *Coffee Bar*, *Hot Grill*, *Bakery & Desserts*).
+* **Live Kanban Board:** Columns for `PENDING`, `PREPARING`, `READY TO SERVE`, and `BUMPED`.
+* **Dynamic Prep Timers:**
+  * Green: 0–10 mins (On Schedule)
+  * Amber: 10–20 mins (Moderate Rush)
+  * Red (Flashing Urgent): > 20 mins (Late alert)
+* **Chef Actions:** Item strike-through (cross off finished dish items), reprint KOT slip, advance status, and bump ticket.
+* **KDS Analytics:** Average station prep speed, fastest ticket, slowest ticket, and count of late orders.
 
-/* Dark Mode */
---background:         #0B0B0D;
---surface:            #151517;
---sidebar:            #111113;
---foreground:         #F4F4F5;
---muted-foreground:   #9CA3AF;
---border:             #26262A;
---primary:            #FB7185; /* Bright Rose for dark contrast */
---primary-foreground: #1F0A0F;
---success:            #34D399;
---warning:            #FBBF24;
---danger:             #F87171;
-```
+### Module 3: Menu & Modifier Management
+* **Hierarchies:** Category $\rightarrow$ Menu Dish $\rightarrow$ Modifier Groups (Single-select / Multi-select) $\rightarrow$ Options with price additions.
+* **Combos & Meals:** Bundle sets (e.g., Morning Coffee + Croissant Combo).
+* **Instant Out-of-Stock Toggle:** 1-click toggle that instantly disables dishes across POS terminals and Customer QR menus in real-time.
+* **Recipe Costing Integration:** Displays ingredient food cost and gross profit margin percentage directly on each dish card.
 
-### Typography & Spacing
-* **Font Family:** `Geist` or `Inter`, system fallback.
-* **Radius:** `12px` default, `16px` for cards, `9999px` for pills/badges.
-* **Layout Structure:**
-  * Collapsible Sidebar (icons + labels, collapses to bottom bar / drawer on mobile).
-  * Top Bar: Restaurant & Branch selector, Global search (`Ctrl+K`), Quick clock-in/out button, Notification bell, Dark/Light mode toggle, User avatar.
-  * POS Screen: 65% Menu Grid (Categories + Dish Cards) / 35% Active Cart panel.
-  * KDS Screen: High-contrast fullscreen kanban board with dynamic ticket countdown clocks.
+### Module 4: Inventory & Store Management
+* **Raw Ingredients:** Units of measure (kg, g, l, ml, pcs), current stock balances, reorder thresholds, and average unit costs.
+* **Recipe Costing Formulation:** Granular recipe breakdown (e.g. 18g espresso beans + 220ml milk = ₹34.76 recipe cost for Flat White).
+* **Automatic Consumption:** Stock is deducted automatically upon kitchen order routing.
+* **FIFO Waste Logging:** Log wasted/spoiled milk, burnt roasts, or dropped food with reason codes and automated financial loss calculations.
 
----
+### Module 5: Procurement & Vendor Management
+* **Suppliers Directory:** Vendor contact details, GSTIN, credit payment terms (7, 15, 30 days), and supplier quality ratings (1–5 stars).
+* **Purchase Orders (PO):** Issue POs with line items, delivery dates, and status tracking (`DRAFT`, `SENT`, `RECEIVED`).
+* **Goods Receipt Notes (GRN):** Record goods received against POs with vendor invoice numbers and inventory batch intake.
 
-## 4. Supabase Data Model (PostgreSQL)
+### Module 6: CRM, Loyalty & Referral Rewards
+* **Customer Profiles:** Phone-based CRM tracking visit count, lifetime spend, favorite items, and birthday/anniversary dates.
+* **Loyalty Points Engine:** Configurable earn rate (e.g. 5% cashback in points) and instant checkout redemption.
+* **Referral Program:** Unique 8-digit referral codes generated for each customer; bonus points awarded to both referrer and friend upon first order.
+* **Gift Vouchers:** Generate branded digital vouchers (e.g., `WELCOME100`, `BREWBEST500`) with balance tracking.
+* **Guest Feedback:** Post-meal star ratings for Food, Service, and Ambience with customer comments.
 
-```mermaid
-erDiagram
-    RESTAURANTS ||--o{ BRANCHES : has
-    BRANCHES ||--o{ USERS : assigns
-    BRANCHES ||--o{ FLOORS : contains
-    FLOORS ||--o{ TABLES : has
-    BRANCHES ||--o{ MENU_CATEGORIES : organizes
-    MENU_CATEGORIES ||--o{ MENU_ITEMS : contains
-    MENU_ITEMS ||--o{ RECIPES : uses
-    BRANCHES ||--o{ ORDERS : receives
-    ORDERS ||--o{ ORDER_ITEMS : contains
-    ORDERS ||--o{ PAYMENTS : settles
-    ORDERS ||--o{ KOT_TICKETS : routes
-    BRANCHES ||--o{ INVENTORY_ITEMS : manages
-    BRANCHES ||--o{ CUSTOMERS : records
-```
+### Module 7: Staff Management, Attendance & Tip Pool
+* **Staff Accounts & RBAC:** Roles for Branch Manager, Cashier, Waiter, Kitchen Chef, and Storekeeper with hourly pay rates.
+* **PIN-Based Terminal Clock In/Out:** Attendance logs with exact timestamps, total hours, and overtime calculations.
+* **Shift Scheduling:** Shift templates with clash checks and handover buffers.
+* **Equitable Tip Pool Splitter:** Aggregates daily collected tips and automatically splits them proportionally among on-duty staff based on their exact clocked hours.
 
-### Key Supabase Tables
-1. `restaurants` & `branches` (Tenancy, currency, timezone, tax regime, UPI VPA).
-2. `users`, `roles`, `permissions`, `role_permissions` (Supabase Auth `auth.users` linked to public `users`).
-3. `floors`, `tables` (Coordinates `x`, `y`, shape, capacity, status, QR token).
-4. `menu_categories`, `menu_items`, `modifier_groups`, `modifier_options`, `combos`.
-5. `orders`, `order_items`, `order_item_modifiers`, `kot_tickets`, `payments`.
-6. `customers`, `loyalty_transactions`, `coupons`.
-7. `ingredients`, `recipes`, `stock_batches`, `waste_logs`, `purchase_orders`.
-8. `attendance`, `shifts`, `payroll_runs`, `cash_closings`.
+### Module 8: Accounting, Expenses & Day-End Cash Close
+* **Nightly Cash Close Terminal:** Reconciles physical cash drawer against system transactions:
+  $$\text{Expected Cash} = \text{Opening Float} + \text{Cash Sales} - \text{Petty Cash Expenses} - \text{Cash Refunds}$$
+  Highlights exact **Variance (Shortage or Surplus)** for theft prevention and manager audit sign-off.
+* **Petty Cash Expenses:** Categorized log of daily operational disbursements (LPG gas, lemons/mint, equipment maintenance).
+* **Monthly Budgets vs Actual:** Visual budget utilization progress bars per expense category.
+* **Profit & Loss Statement (P&L):** Accrual financial summary covering Gross Sales, COGS, Gross Margin %, Operating Expenses, and Net Operating Profit.
+* **India GST Tax Summary:** CGST 2.5% + SGST 2.5% liability reports exportable for monthly GST return filing.
 
-### Realtime Architecture (Replacing Socket.IO)
-In Angular, we listen to Supabase Realtime channels:
-* `channel('branch-kds-${branchId}')` $\rightarrow$ Listens to INSERT/UPDATE on `kot_tickets` and `orders`.
-* `channel('branch-tables-${branchId}')` $\rightarrow$ Listens to status updates on `tables` (vacant, occupied, bill requested).
-* `channel('branch-pos-${branchId}')` $\rightarrow$ Listens to waiter calls and online/QR order alerts with audio chimes.
+### Module 9: Online QR Dine-in & Ordering PWA
+* **Table QR Self-Ordering:** Smartphone web view where guests browse photos, select modifiers, and submit orders directly to kitchen KDS.
+* **Call Waiter Chime:** Interactive button that instantly sounds an audio chime and pops an alert on the cashier/manager top bar.
+* **Request Bill Button:** Flags table status to `BILL_REQUESTED` without needing to flag down busy servers.
 
----
+### Module 10: Analytics & 18 Reports
+* **Live KPI Dashboard:** Today's Sales, Orders Count, Occupancy %, Average Prep Speed, and Cash vs UPI Tender breakdown.
+* **Peak Hours Heatmap:** Visual footfall and revenue heatmap across 2-hour time slots to optimize staff scheduling.
+* **Menu Sales Velocity:** Ranked list of best-sellers, quantities sold, revenue, raw food cost, and profit margins.
+* **Customer Retention Metrics:** Total registered guests, new customer acquisition rate, and repeat customer percentage.
+* **1-Click CSV Export:** Export any report to clean CSV/Excel spreadsheets.
 
-## 5. Angular Application Architecture
-
-```
-apps/angular-pos/
-├── src/
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── services/
-│   │   │   │   ├── supabase.service.ts       # Supabase client singleton
-│   │   │   │   ├── auth.service.ts           # Supabase Auth signal state
-│   │   │   │   ├── realtime.service.ts       # Supabase Realtime Channels
-│   │   │   │   ├── sound.service.ts          # Chimes for KOT/payment received
-│   │   │   │   ├── print.service.ts          # ESC/POS & HTML receipt generator
-│   │   │   │   └── tax-calculator.service.ts # India GST inclusive/exclusive math
-│   │   │   ├── guards/
-│   │   │   │   ├── auth.guard.ts
-│   │   │   │   └── permission.guard.ts
-│   │   │   └── models/                      # Full TypeScript interfaces & DTOs
-│   │   ├── shared/
-│   │   │   ├── components/                  # Buttons, Modals, Inputs, Data Tables
-│   │   │   └── pipes/                       # Currency INR (₹), TimeAgo, TaxFormatter
-│   │   └── features/
-│   │       ├── pos/                         # POS Billing Screen (Cart, Modifiers, Split)
-│   │       ├── kds/                         # Kitchen Display Screen (Live tickets)
-│   │       ├── tables/                      # Visual Floor Plan & Waitlist
-│   │       ├── menu/                        # Category, Dish, Modifier management
-│   │       ├── inventory/                   # Ingredients, Recipes, Waste, POs
-│   │       ├── crm/                         # Customers, Loyalty points, Referrals
-│   │       ├── reports/                     # Sales, Tax, P&L, Staff analytics
-│   │       ├── staff/                       # Attendance, Shifts, Payroll
-│   │       ├── finance/                     # Daily Cash Close, Expenses
-│   │       ├── qr-guest/                    # Customer Mobile QR Menu & Ordering
-│   │       └── settings/                    # Branch details, Tax mode, UPI setup
-```
+### Module 11: Branch Governance & Dynamic UPI Configuration
+* **Per-Branch Tax Regime:** Switch between GST 5%, 12%, 18%, or Tax-Inclusive pricing modes.
+* **Dynamic NPCI UPI Payee QR:** Configurable merchant VPA (e.g. `yourcafe@icici`) and payee name that dynamically renders exact UPI payment strings on POS bills and customer checkouts:
+  $$\text{upi://pay?pa=VPA\&pn=NAME\&am=AMOUNT\&cu=INR\&tn=BILL\_REF}$$
+* **Role Permissions:** Granular access controls per staff designation.
 
 ---
 
-## 6. Implementation Milestones
+## 3. Database Schema File Reference
 
-1. **Phase 1: Foundation & Supabase Setup**
-   * Supabase database schema migration (DDL, Enums, RLS policies).
-   * Angular 19 initialization with Tailwind v4, Lucide icons, and Supabase client.
-   * Supabase Auth + Pin quick-login + Branch context switch.
-2. **Phase 2: Menu, Tables & Core POS Billing**
-   * Menu & Modifiers management with image uploads to Supabase Storage.
-   * Visual table designer & table occupancy state.
-   * Full POS billing interface, discount engine, GST calculation, and cash/UPI tender with dynamic QR.
-3. **Phase 3: Realtime KDS & Printing**
-   * KDS Kanban board powered by Supabase Realtime.
-   * Automatic KOT routing to kitchen stations.
-   * Thermal receipt & KOT printing engine.
-4. **Phase 4: Inventory, Costing & Procurement**
-   * Ingredient setup, recipe formulation, automatic stock deduction, FIFO waste log.
-   * Purchase order and GRN workflow.
-5. **Phase 5: CRM, Staff, Reports & Day-End Cash Close**
-   * Customer loyalty & referral reward logic.
-   * Staff clock-in/out, shift management, payroll calculations.
-   * Cash closing reconciliation & 18 exportable reports.
+The complete production SQL migration is stored at:
+[supabase/migrations/001_initial_schema.sql](file:///d:/juned%20project/restaurantPOS/supabase/migrations/001_initial_schema.sql)
+
+It includes:
+1. `organizations`, `branches` (Tenancy, GSTIN, UPI VPA)
+2. `app_users`, `roles` (RBAC & PIN auth)
+3. `floors`, `tables`, `waitlist`, `reservations`
+4. `kitchen_stations`, `kot_tickets`, `kot_items`
+5. `menu_categories`, `menu_items`, `modifier_groups`, `modifier_options`
+6. `orders`, `order_items`, `order_item_modifiers`, `payments`
+7. `table_guest_requests` (Call waiter / Request bill)
+8. `inventory_items`, `recipes`, `recipe_ingredients`, `waste_logs`
+9. `suppliers`, `purchase_orders`, `goods_receipt_notes`
+10. `customers`, `loyalty_transactions`, `gift_vouchers`, `customer_feedback`
+11. `shifts`, `attendance_logs`, `tip_pools`, `tip_distributions`
+12. `cash_closings`, `expenses`, `monthly_budgets`
+13. Supabase Realtime publication setup and Row-Level Security policies.

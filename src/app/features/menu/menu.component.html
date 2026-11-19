@@ -1,0 +1,201 @@
+<div class="menu-page">
+  <!-- Top Header Row -->
+  <div class="menu-title-row">
+    <div>
+      <h1 class="page-title">Menu</h1>
+      <p class="page-subtitle">Categories, items, and pricing</p>
+    </div>
+
+    <button class="btn btn-primary" (click)="openAddItemModal()">
+      <i class="ri-add-line"></i> Add item
+    </button>
+  </div>
+
+  <!-- Two-Column Layout (Matches Reference Image 3 Right Pane) -->
+  <div class="menu-layout-grid">
+    <!-- LEFT: Categories List Box -->
+    <div class="categories-box card">
+      <div class="categories-title">CATEGORIES</div>
+
+      <div class="category-menu-list">
+        <div
+          class="cat-menu-item"
+          [class.active]="selectedCategoryId === 'ALL'"
+          (click)="selectedCategoryId = 'ALL'"
+        >
+          <span>All items</span>
+          <span class="cat-count">{{ items.length }}</span>
+        </div>
+
+        <div
+          *ngFor="let cat of categories"
+          class="cat-menu-item"
+          [class.active]="selectedCategoryId === cat.id"
+          (click)="selectedCategoryId = cat.id"
+        >
+          <span>{{ cat.name }}</span>
+          <span class="cat-count">{{ cat.item_count || 2 }}</span>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-sm add-cat-btn" (click)="openAddCategoryModal()">
+        <i class="ri-add-line"></i> Add category
+      </button>
+    </div>
+
+    <!-- RIGHT: Items Table Card -->
+    <div class="items-table-card card">
+      <div class="card-head-row">
+        <h3 class="items-heading">Items</h3>
+        <input
+          type="search"
+          placeholder="Search items..."
+          [(ngModel)]="searchQuery"
+          class="items-search"
+        >
+      </div>
+
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Station</th>
+              <th>Price</th>
+              <th>Tax</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of filteredItems">
+              <td>
+                <div style="display: flex; align-items: center;">
+                  <span class="food-dot" [class.veg]="item.is_veg" [class.non-veg]="!item.is_veg"></span>
+                  <strong style="color: #0F172A;">{{ item.name }}</strong>
+                </div>
+              </td>
+              <td>{{ item.category_name }}</td>
+              <td>
+                <span class="badge badge-neutral">{{ item.kitchen_station_name || 'Main Kitchen' }}</span>
+              </td>
+              <td>
+                <strong style="color: #0F172A;">₹{{ item.price | number:'1.2-2' }}</strong>
+              </td>
+              <td>{{ item.tax_rate || 5 }}%</td>
+              <td style="text-align: right;">
+                <button
+                  class="btn-pill btn-sm"
+                  [class.btn-secondary]="item.is_available"
+                  [class.btn-primary]="!item.is_available"
+                  (click)="toggleAvailability(item)"
+                  title="Toggle 86 Stock"
+                >
+                  {{ item.is_available ? 'In Stock' : 'Out of Stock' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal-overlay" *ngIf="showAddModal" (click)="showAddModal = false">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Menu Item</h3>
+      <button type="button" class="modal-close-btn" (click)="showAddModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Item Name *</label>
+        <input
+          type="text"
+          [(ngModel)]="newItemName"
+          placeholder="e.g. Cold Coffee, Margherita Pizza"
+          class="form-control"
+          autofocus
+        >
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">Selling Price (₹) *</label>
+          <input type="number" [(ngModel)]="newItemPrice" class="form-control" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cost Price (₹)</label>
+          <input type="number" [(ngModel)]="newItemCost" class="form-control" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="margin: 0;">Category *</label>
+          <button
+            type="button"
+            style="background: transparent; border: none; color: #881337; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;"
+            (click)="showAddModal = false; openAddCategoryModal()"
+          >
+            <i class="ri-add-line"></i> New category
+          </button>
+        </div>
+        <app-custom-select
+          [options]="categoryOptions"
+          [(ngModel)]="newItemCategoryId"
+          placeholder="Select category..."
+        ></app-custom-select>
+      </div>
+
+      <div style="display: flex; gap: 16px; align-items: center; padding-top: 6px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; cursor: pointer; user-select: none;">
+          <input type="checkbox" [(ngModel)]="newItemIsVeg" style="accent-color: #16A34A; width: 17px; height: 17px; cursor: pointer;">
+          <span class="food-dot" [class.veg]="newItemIsVeg" [class.non-veg]="!newItemIsVeg"></span>
+          <span>{{ newItemIsVeg ? 'Vegetarian Item 🟢' : 'Non-Vegetarian Item 🔴' }}</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="showAddModal = false">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveNewItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal-overlay" *ngIf="showAddCategoryModal" (click)="showAddCategoryModal = false">
+  <div class="modal-dialog" style="max-width: 440px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Menu Category</h3>
+      <button type="button" class="modal-close-btn" (click)="showAddCategoryModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Category Name *</label>
+        <input
+          type="text"
+          [(ngModel)]="newCategoryName"
+          placeholder="e.g. Artisanal Mocktails, Gluten-Free Bakery, Pizza"
+          class="form-control"
+          (keyup.enter)="saveCategory()"
+          autofocus
+        >
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="showAddCategoryModal = false">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveCategory()">Create Category</button>
+    </div>
+  </div>
+</div>

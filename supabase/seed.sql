@@ -1,0 +1,141 @@
+-- ==============================================================================
+-- RESTAURANT & CAFE POS SAAS — PRODUCTION DEMO SEED DATA
+-- Target Database: Supabase PostgreSQL (Valid UUID Format)
+-- ==============================================================================
+
+-- 1. Create Demo Organization (Tenant 1: Artisan Cafe)
+INSERT INTO organizations (
+    id, name, slug, owner_name, owner_email, owner_phone, tier, subscription_status, max_branches, is_active
+) VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    'Brew & Beans Artisan Cafe',
+    'brew-and-beans',
+    'Juned Khan',
+    'juned@brewbeans.com',
+    '+91 98765 43210',
+    'GROWTH',
+    'ACTIVE',
+    3,
+    TRUE
+) ON CONFLICT (id) DO NOTHING;
+
+-- 2. Create Demo Branch (Hill Road Bandra)
+INSERT INTO branches (
+    id, organization_id, name, code, address, city, state, postal_code, phone, email,
+    gstin, tax_regime, is_tax_inclusive, default_cgst_pct, default_sgst_pct, upi_vpa, upi_payee_name
+) VALUES (
+    '00000000-0000-0000-0000-000000000011',
+    '00000000-0000-0000-0000-000000000001',
+    'Hill Road Flagship',
+    'HILL-01',
+    'Shop 4, Hill Road, Bandra West',
+    'Mumbai',
+    'Maharashtra',
+    '400050',
+    '+91 98200 11223',
+    'hillroad@brewbeans.com',
+    '27AABCU9603R1ZM',
+    'INDIA_GST',
+    FALSE,
+    2.50,
+    2.50,
+    'brewbeans@icici',
+    'Brew and Beans Bandra'
+) ON CONFLICT (id) DO NOTHING;
+
+-- 3. Staff Users
+INSERT INTO app_users (
+    id, organization_id, branch_id, full_name, email, phone, role, hourly_rate
+) VALUES 
+('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Zuber Khan (Manager)', 'zuber@brewbeans.com', '+91 98765 00001', 'BRANCH_MANAGER', 300.00),
+('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Rahul More (Chef)', 'rahul@brewbeans.com', '+91 98200 12001', 'KITCHEN_CHEF', 180.00),
+('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Sunil Shinde (Waiter)', 'sunil@brewbeans.com', '+91 98200 12002', 'WAITER', 120.00),
+('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Aakash Verma (Cashier)', 'aakash@brewbeans.com', '+91 98200 12004', 'CASHIER', 150.00)
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Kitchen Stations
+INSERT INTO kitchen_stations (
+    id, organization_id, branch_id, name, code, color_code
+) VALUES
+('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Coffee & Beverage Bar', 'BAR', '#0284C7'),
+('00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Hot Kitchen & Grill', 'GRILL', '#EA580C'),
+('00000000-0000-0000-0000-000000000203', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Bakery & Dessert Section', 'BAKERY', '#9333EA')
+ON CONFLICT (id) DO NOTHING;
+
+-- 5. Floors & Tables
+INSERT INTO floors (id, organization_id, branch_id, name, display_order) VALUES
+('00000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Main Indoor Cafe', 1),
+('00000000-0000-0000-0000-000000000302', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Open Air Terrace', 2)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO tables (
+    id, organization_id, branch_id, floor_id, table_number, capacity, shape, pos_x, pos_y, status, qr_token
+) VALUES
+('00000000-0000-0000-0000-000000000401', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000301', 'T-01', 2, 'SQUARE', 10, 15, 'AVAILABLE', 'qr-token-t01'),
+('00000000-0000-0000-0000-000000000402', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000301', 'T-02', 4, 'RECTANGLE', 35, 15, 'OCCUPIED', 'qr-token-t02'),
+('00000000-0000-0000-0000-000000000403', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000301', 'T-03', 4, 'RECTANGLE', 65, 15, 'BILL_REQUESTED', 'qr-token-t03'),
+('00000000-0000-0000-0000-000000000404', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000301', 'T-04', 6, 'ROUND', 20, 55, 'RESERVED', 'qr-token-t04'),
+('00000000-0000-0000-0000-000000000405', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000301', 'T-05', 2, 'SQUARE', 55, 55, 'AVAILABLE', 'qr-token-t05'),
+('00000000-0000-0000-0000-000000000406', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000302', 'TR-01', 4, 'ROUND', 25, 30, 'AVAILABLE', 'qr-token-tr01'),
+('00000000-0000-0000-0000-000000000407', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000302', 'TR-02', 4, 'ROUND', 60, 30, 'OCCUPIED', 'qr-token-tr02')
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. Menu Categories
+INSERT INTO menu_categories (
+    id, organization_id, name, slug, icon_name, display_order, kitchen_station_id
+) VALUES
+('00000000-0000-0000-0000-000000000501', '00000000-0000-0000-0000-000000000001', 'Hot Brews & Espresso', 'hot-brews', 'coffee', 1, '00000000-0000-0000-0000-000000000201'),
+('00000000-0000-0000-0000-000000000502', '00000000-0000-0000-0000-000000000001', 'Cold Brews & Frappes', 'cold-brews', 'cup-soda', 2, '00000000-0000-0000-0000-000000000201'),
+('00000000-0000-0000-0000-000000000503', '00000000-0000-0000-0000-000000000001', 'Gourmet Sandwiches & Toast', 'sandwiches', 'sandwich', 3, '00000000-0000-0000-0000-000000000202'),
+('00000000-0000-0000-0000-000000000504', '00000000-0000-0000-0000-000000000001', 'Artisan Bakery & Desserts', 'desserts', 'cake', 4, '00000000-0000-0000-0000-000000000203'),
+('00000000-0000-0000-0000-000000000505', '00000000-0000-0000-0000-000000000001', 'Cafe Combos & Meals', 'combos', 'package', 5, '00000000-0000-0000-0000-000000000202')
+ON CONFLICT (id) DO NOTHING;
+
+-- 7. Menu Items
+INSERT INTO menu_items (
+    id, organization_id, category_id, kitchen_station_id, name, short_code, description, price, cost_price, is_veg, is_available, prep_time_mins, is_combo
+) VALUES
+('00000000-0000-0000-0000-000000000601', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000501', '00000000-0000-0000-0000-000000000201', 'Single Origin Flat White', 'FLAT-W', 'Double ristretto shot with velvety micro-foamed milk.', 240, 48, TRUE, TRUE, 4, FALSE),
+('00000000-0000-0000-0000-000000000602', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000501', '00000000-0000-0000-0000-000000000201', 'Spanish Cortado', 'CORT', 'Equal parts espresso and steamed textured milk.', 210, 42, TRUE, TRUE, 3, FALSE),
+('00000000-0000-0000-0000-000000000603', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000502', '00000000-0000-0000-0000-000000000201', '18-Hour Nitro Cold Brew', 'NITRO', 'Cold extraction infused with nitrogen for a creamy head.', 290, 52, TRUE, TRUE, 2, FALSE),
+('00000000-0000-0000-0000-000000000604', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000503', '00000000-0000-0000-0000-000000000202', 'Truffled Wild Mushroom Sourdough', 'TRUFF-MUSH', 'Shimeji and cremini mushrooms with truffle oil on sourdough.', 380, 115, TRUE, TRUE, 12, FALSE),
+('00000000-0000-0000-0000-000000000605', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000503', '00000000-0000-0000-0000-000000000202', 'Smoked Chicken & Pesto Panini', 'PESTO-CHK', 'Herb grilled chicken, house basil pesto, bocconcini cheese.', 420, 140, FALSE, TRUE, 15, FALSE),
+('00000000-0000-0000-0000-000000000606', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000504', '00000000-0000-0000-0000-000000000203', 'Salted Caramel Hazelnut Cheesecake', 'CARAM-CHZ', 'Baked New York style cheesecake with sea salt caramel crunch.', 310, 85, TRUE, TRUE, 3, FALSE),
+('00000000-0000-0000-0000-000000000607', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000505', '00000000-0000-0000-0000-000000000202', 'Barista Morning Combo', 'MORN-COMBO', 'Choice of any Hot Coffee + Croissant or Avocado Toast.', 490, 135, TRUE, TRUE, 10, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+-- 8. Raw Inventory Items
+INSERT INTO inventory_items (
+    id, organization_id, branch_id, name, sku, uom, current_stock, reorder_level, avg_unit_cost
+) VALUES
+('00000000-0000-0000-0000-000000000701', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Arabica Espresso Beans (Estate Blend)', 'RAW-BEAN-01', 'KG', 18.5, 10.0, 1100.00),
+('00000000-0000-0000-0000-000000000702', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Full Cream Milk (Fresh)', 'RAW-MILK-02', 'L', 35.0, 20.0, 68.00),
+('00000000-0000-0000-0000-000000000703', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Oat Milk Barista Edition', 'RAW-OAT-03', 'L', 6.0, 10.0, 240.00),
+('00000000-0000-0000-0000-000000000704', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Sourdough Artisan Loaf', 'RAW-SOUR-04', 'PCS', 14.0, 8.0, 120.00),
+('00000000-0000-0000-0000-000000000705', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Fresh Hass Avocado', 'RAW-AVO-05', 'KG', 4.2, 5.0, 380.00),
+('00000000-0000-0000-0000-000000000706', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000011', 'Fresh Chicken Breast', 'RAW-CHK-06', 'KG', 12.0, 6.0, 290.00)
+ON CONFLICT (id) DO NOTHING;
+
+-- 9. Suppliers
+INSERT INTO suppliers (
+    id, organization_id, name, contact_person, phone, email, address, payment_terms_days, rating
+) VALUES
+('00000000-0000-0000-0000-000000000801', '00000000-0000-0000-0000-000000000001', 'Blue Tokai Roastery Supplies', 'Anand Sharma', '+91 98112 00112', 'roastery@bluetokai.com', 'Okhla Phase 3, New Delhi', 15, 4.9),
+('00000000-0000-0000-0000-000000000802', '00000000-0000-0000-0000-000000000001', 'Amul Dairy Distributors (West)', 'Mukesh Patel', '+91 98200 88776', 'westdairy@amuldist.in', 'Andheri East Wholesale, Mumbai', 7, 4.8)
+ON CONFLICT (id) DO NOTHING;
+
+-- 10. Customers & CRM
+INSERT INTO customers (
+    id, organization_id, full_name, phone, email, total_spent, visit_count, loyalty_points, referral_code, membership_tier
+) VALUES
+('00000000-0000-0000-0000-000000000901', '00000000-0000-0000-0000-000000000001', 'Ananya Deshmukh', '+91 98200 12345', 'ananya.d@gmail.com', 8940, 14, 320, 'ANANYA88', 'GOLD'),
+('00000000-0000-0000-0000-000000000902', '00000000-0000-0000-0000-000000000001', 'Vikramaditya Singhania', '+91 98199 87654', 'vikram.s@outlook.com', 14200, 22, 680, 'VIKRAM07', 'PLATINUM')
+ON CONFLICT (id) DO NOTHING;
+
+-- 11. Gift Vouchers
+INSERT INTO gift_vouchers (
+    id, organization_id, code, initial_amount, balance_amount, expires_at, is_active
+) VALUES
+('00000000-0000-0000-0000-000000001001', '00000000-0000-0000-0000-000000000001', 'WELCOME100', 100, 100, '2026-12-31 23:59:59+00', TRUE),
+('00000000-0000-0000-0000-000000001002', '00000000-0000-0000-0000-000000000001', 'BREWBEST500', 500, 500, '2026-12-31 23:59:59+00', TRUE)
+ON CONFLICT (id) DO NOTHING;

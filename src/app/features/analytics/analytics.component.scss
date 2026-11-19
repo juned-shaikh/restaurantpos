@@ -1,0 +1,280 @@
+.dashboard-page {
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 2px;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: #64748B;
+}
+
+.report-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Metrics Row (4 Cards) - Fully Responsive */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1200px) {
+  .metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .metrics-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.metric-label {
+  font-size: 13px;
+  color: #64748B;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+
+  &.icon-green {
+    background-color: #DCFCE7;
+  }
+  &.icon-red {
+    background-color: #FEE2E2;
+  }
+  &.icon-orange {
+    background-color: #FEF3C7;
+  }
+}
+
+.metric-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0F172A;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Breakdown Row (3 Cards) - Fully Responsive */
+.breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .breakdown-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.breakdown-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 18px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.card-head {
+  margin-bottom: 14px;
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0F172A;
+  }
+}
+
+.head-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.item-count {
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.dot-green {
+    background-color: #16A34A;
+  }
+  &.dot-red {
+    background-color: #DC2626;
+  }
+  &.dot-maroon {
+    background-color: #881337;
+  }
+  &.dot-yellow {
+    background-color: #D97706;
+  }
+  &.dot-orange {
+    background-color: #EA580C;
+  }
+  &.dot-grey {
+    background-color: #94A3B8;
+  }
+}
+
+/* Recent Transactions */
+.recent-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transaction-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F1F5F9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.tx-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tx-id {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0F172A;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tx-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background-color: #F1F5F9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.tx-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tx-amount {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.tx-refresh {
+  font-size: 12px;
+  cursor: pointer;
+  color: #94A3B8;
+}
+
+.tx-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+
+  &.status-settled {
+    background: #DCFCE7;
+    color: #166534;
+  }
+  &.status-active {
+    background: #FEF3C7;
+    color: #92400E;
+  }
+}
+
+.metric-subtitle {
+  font-size: 11px;
+  color: #64748B;
+  margin-top: 4px;
+}

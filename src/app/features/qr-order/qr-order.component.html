@@ -1,0 +1,150 @@
+<div class="qr-order-wrapper">
+  <!-- Top Mode Switcher: QR Mobile View vs Delivery Zones -->
+  <div class="mode-switcher-row">
+    <button
+      class="btn btn-sm"
+      [class.btn-primary]="activeViewMode === 'qr'"
+      [class.btn-secondary]="activeViewMode !== 'qr'"
+      (click)="activeViewMode = 'qr'"
+    >
+      <i class="ri-smartphone-line"></i> Guest Table QR Simulator
+    </button>
+    <button
+      class="btn btn-sm"
+      [class.btn-primary]="activeViewMode === 'delivery'"
+      [class.btn-secondary]="activeViewMode !== 'delivery'"
+      (click)="activeViewMode = 'delivery'"
+    >
+      <i class="ri-e-bike-2-line"></i> Delivery Zones by Pincode
+    </button>
+  </div>
+
+  <!-- VIEW 1: GUEST TABLE QR ORDERING (MOBILE SIMULATOR) -->
+  <div class="phone-frame" *ngIf="activeViewMode === 'qr'">
+    <div class="phone-notch"></div>
+    <!-- Phone Top Status Notch & Language Switcher -->
+    <div class="phone-header">
+      <div class="cafe-info">
+        <h3>{{ tenantService.currentOrg.name }}</h3>
+        <span class="table-badge">Table {{ currentTable?.table_number }}</span>
+      </div>
+
+      <!-- Language Switcher: EN / HI -->
+      <div class="lang-switcher">
+        <button class="lang-btn" [class.active]="selectedLang === 'EN'" (click)="setLang('EN')">EN</button>
+        <button class="lang-btn" [class.active]="selectedLang === 'HI'" (click)="setLang('HI')">हिं</button>
+      </div>
+
+      <!-- Simulator Table Switcher (Custom Dropdown) -->
+      <div class="sim-switch" style="width: 110px;">
+        <app-custom-select
+          [options]="tableOptions"
+          [(ngModel)]="selectedTableId"
+          (valueChange)="onTableSwitch()"
+          size="sm"
+        ></app-custom-select>
+      </div>
+    </div>
+
+    <!-- Quick Service Call Actions -->
+    <div class="quick-service-actions">
+      <button class="service-pill waiter" (click)="callWaiter()">
+        <i class="ri-user-voice-line"></i> {{ t.callWaiter }}
+      </button>
+      <button class="service-pill bill" (click)="requestBill()">
+        <i class="ri-file-text-line"></i> {{ t.requestBill }}
+      </button>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="mobile-cat-scroll">
+      <button
+        class="cat-chip"
+        [class.active]="selectedCatId === 'ALL'"
+        (click)="selectedCatId = 'ALL'"
+      >
+        All
+      </button>
+      <button
+        *ngFor="let cat of categories"
+        class="cat-chip"
+        [class.active]="selectedCatId === cat.id"
+        (click)="selectedCatId = cat.id"
+      >
+        {{ cat.name }}
+      </button>
+    </div>
+
+    <!-- Dish List for Guests -->
+    <div class="mobile-items-list">
+      <div *ngFor="let dish of filteredDishes" class="mobile-dish-card">
+        <div class="dish-text">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="diet-dot" [class.veg]="dish.is_veg" [class.nonveg]="!dish.is_veg"></span>
+            <span class="dish-title">{{ dish.name }}</span>
+          </div>
+          <p class="dish-desc">{{ dish.description }}</p>
+          <div class="dish-rate">₹{{ dish.price }}</div>
+        </div>
+        <button class="add-to-cart-btn" (click)="addToGuestCart(dish)">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Sticky Cart Drawer at Bottom of Phone -->
+    <div class="mobile-cart-drawer" *ngIf="guestCart.length > 0">
+      <div class="drawer-header">
+        <span><b>{{ t.yourOrder }}</b> ({{ guestCart.length }} items)</span>
+        <span class="drawer-total">₹{{ guestCartTotal }}</span>
+      </div>
+
+      <div class="drawer-items">
+        <div *ngFor="let item of guestCart" class="drawer-line">
+          <span>{{ item.name }} x{{ item.quantity }}</span>
+          <span>₹{{ item.total_price }}</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block submit-order-btn" (click)="submitGuestOrder()">
+        {{ t.placeOrder }} (₹{{ guestCartTotal }})
+      </button>
+    </div>
+  </div>
+
+  <!-- VIEW 2: DELIVERY MANAGEMENT ZONES BY PINCODE -->
+  <div class="delivery-zones-view card" *ngIf="activeViewMode === 'delivery'" style="max-width: 800px; margin: 0 auto; width: 100%;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <h3>Delivery Zones by Pincode</h3>
+        <p style="font-size: 13px; color: #64748B;">Manage operational delivery radiuses, delivery fees, ETA and order thresholds.</p>
+      </div>
+      <button class="btn btn-sm btn-primary">+ Add New Pincode</button>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Pincode</th>
+          <th>Area / Region</th>
+          <th>Min Order Value</th>
+          <th>Delivery Fee</th>
+          <th>Est. Delivery Time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let zone of deliveryZones">
+          <td><b>{{ zone.pincode }}</b></td>
+          <td>{{ zone.areaName }}</td>
+          <td>₹{{ zone.minOrder }}</td>
+          <td>
+            <span [style.color]="zone.deliveryFee === 0 ? 'var(--success)' : 'inherit'">
+              {{ zone.deliveryFee === 0 ? 'FREE' : '₹' + zone.deliveryFee }}
+            </span>
+          </td>
+          <td>⏱️ {{ zone.estimatedMins }} mins</td>
+          <td><span class="badge badge-available">ACTIVE</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

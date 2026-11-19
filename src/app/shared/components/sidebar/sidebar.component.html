@@ -1,0 +1,53 @@
+<!-- Backdrop for mobile drawer overlay -->
+<div class="sidebar-backdrop" *ngIf="isMobileOpen" (click)="closeSidebar()"></div>
+
+<aside class="app-sidebar" [class.mobile-open]="isMobileOpen">
+  <!-- Brand Header -->
+  <div class="sidebar-top">
+    <div class="brand-row">
+      <div class="brand-avatar">{{ (currentOrg?.name || 'N').charAt(0).toUpperCase() }}</div>
+      <div class="brand-name-box">
+        <span class="brand-title">{{ currentOrg?.name || 'Brew & Beans' }}</span>
+        <span class="brand-subtitle" *ngIf="activeBranch?.name">{{ activeBranch?.name }}</span>
+      </div>
+      <!-- Mobile Close Drawer Button -->
+      <button class="mobile-close-btn" (click)="closeSidebar()" title="Close menu">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Navigation List (Strict RBAC Filtered) -->
+  <nav class="sidebar-nav">
+    <a
+      *ngFor="let item of filteredNavItems"
+      [routerLink]="item.route"
+      routerLinkActive="active"
+      class="nav-link"
+      (click)="onNavClick()"
+    >
+      <span class="nav-icon"><i [class]="item.icon"></i></span>
+      <span class="nav-label">{{ item.label }}</span>
+      <span *ngIf="item.badge" class="nav-badge">{{ item.badge }}</span>
+    </a>
+
+    <a routerLink="/login" class="nav-link" (click)="onNavClick()" style="color: #64748B; margin-top: 6px; border-top: 1px dashed #E2E8F0; padding-top: 10px;">
+      <span class="nav-icon"><i class="ri-lock-line"></i></span>
+      <span class="nav-label">Lock / Switch User</span>
+    </a>
+  </nav>
+
+  <!-- Sidebar Footer with Active Role Pill -->
+  <div class="sidebar-bottom">
+    <div style="background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; font-size: 11px; text-align: center;">
+      <span style="color: #64748B;">Role: </span>
+      <strong style="color: #881337;">{{ currentUser?.role }}</strong>
+    </div>
+
+    <button class="support-pill-btn">
+      <i class="ri-customer-service-2-line" style="font-size: 14px; color: #16A34A;"></i>
+      <span>Contact support</span>
+    </button>
+    <div class="version-label">Cloud POS v2.4 · Multi-Tenant</div>
+  </div>
+</aside>

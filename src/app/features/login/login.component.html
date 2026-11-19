@@ -1,0 +1,234 @@
+<div class="login-wrapper">
+  <!-- Centered Responsive Container -->
+  <div class="login-container">
+    
+    <!-- Top Branding Block -->
+    <div class="brand-header">
+      <div class="brand-avatar">N</div>
+      <div>
+        <h1 class="brand-title">CloudPOS Hospitality</h1>
+        <p class="brand-subtitle">Multi-Tenant Restaurant & Cafe ERP</p>
+      </div>
+    </div>
+
+    <!-- Active Terminal Outlet Badge (Auto-Detected / Paired) -->
+    <div class="terminal-outlet-badge">
+      <div class="outlet-info">
+        <span class="outlet-dot"></span>
+        <span class="outlet-name">{{ activeOutletName }}</span>
+        <span class="outlet-code">[{{ activeOutletCode }}]</span>
+      </div>
+      <button class="pair-outlet-btn" (click)="showOutletPairModal = true" title="Pair terminal with another outlet code">
+        <i class="ri-link-m" style="margin-right: 4px;"></i> Pair Outlet
+      </button>
+    </div>
+
+    <!-- Mode Switcher Tabs (Manager Email vs Staff PIN) -->
+    <div class="mode-tabs">
+      <button
+        class="mode-tab-btn"
+        [class.active]="loginMode === 'password'"
+        (click)="loginMode = 'password'"
+      >
+        <i class="ri-user-settings-line"></i> Manager / Owner
+      </button>
+      <button
+        class="mode-tab-btn"
+        [class.active]="loginMode === 'pin'"
+        (click)="loginMode = 'pin'"
+      >
+        <i class="ri-flashlight-line"></i> Fast Staff PIN
+      </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: MANAGER / OWNER PASSWORD LOGIN     -->
+    <!-- Auto-Resolves Restaurant by Email / Phone -->
+    <!-- ========================================== -->
+    <div *ngIf="loginMode === 'password'" class="login-form-pane">
+      <div *ngIf="errorMessage" class="error-banner">
+        <i class="ri-alert-line" style="margin-right: 6px;"></i> {{ errorMessage }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Registered Email or Mobile Number</label>
+        <div class="input-with-icon">
+          <i class="ri-mail-line field-icon"></i>
+          <input
+            type="email"
+            [(ngModel)]="email"
+            placeholder="e.g. zuber@brewbeans.com or 9876543210"
+            class="form-control"
+            (keyup.enter)="submitPasswordLogin()"
+          >
+        </div>
+        <span class="field-helper">Restaurant & branch are auto-detected from your account credentials.</span>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label class="form-label" style="margin-bottom: 0;">Password</label>
+          <a href="javascript:void(0)" class="forgot-link">Forgot?</a>
+        </div>
+        <div class="input-with-icon">
+          <i class="ri-lock-line field-icon"></i>
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="password"
+            placeholder="Enter security password"
+            class="form-control"
+            (keyup.enter)="submitPasswordLogin()"
+          >
+          <button
+            type="button"
+            class="toggle-pwd-btn"
+            (click)="showPassword = !showPassword"
+            title="Toggle visibility"
+          >
+            <i [class]="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="remember-row">
+        <label class="remember-label">
+          <input type="checkbox" [(ngModel)]="rememberMe">
+          <span>Remember this POS terminal</span>
+        </label>
+      </div>
+
+      <button
+        class="btn-submit-login"
+        [disabled]="isLoading"
+        (click)="submitPasswordLogin()"
+      >
+        <span *ngIf="!isLoading">Sign In to POS Till <i class="ri-arrow-right-line" style="margin-left: 6px;"></i></span>
+        <span *ngIf="isLoading">Verifying & Loading Till...</span>
+      </button>
+
+      <!-- 1-Click Fast Multi-Cafe Demo Accounts -->
+      <div class="demo-logins-section">
+        <div class="demo-heading"><i class="ri-flashlight-line"></i> QUICK 1-CLICK DEMO CLIENTS:</div>
+        <div class="demo-chips-grid">
+          <button
+            *ngFor="let demo of demoAccounts"
+            class="demo-chip"
+            (click)="quickLogin(demo)"
+            title="Login to {{ demo.label }}"
+          >
+            {{ demo.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: FAST STAFF PIN TERMINAL            -->
+    <!-- ========================================== -->
+    <div *ngIf="loginMode === 'pin'" class="pin-form-pane">
+      <div class="staff-picker-box">
+        <label class="form-label">Select Staff Member on Duty:</label>
+        <app-custom-select
+          [options]="staffOptions"
+          [(ngModel)]="selectedStaffName"
+        ></app-custom-select>
+      </div>
+
+      <!-- PIN Indicator Circles -->
+      <div class="pin-display-wrapper">
+        <div class="pin-label">ENTER 4-DIGIT PIN</div>
+        <div class="pin-dots-row">
+          <div class="pin-dot" [class.filled]="pinValue.length >= 1"></div>
+          <div class="pin-dot" [class.filled]="pinValue.length >= 2"></div>
+          <div class="pin-dot" [class.filled]="pinValue.length >= 3"></div>
+          <div class="pin-dot" [class.filled]="pinValue.length >= 4"></div>
+        </div>
+        <div *ngIf="pinError" class="pin-error-msg">{{ pinError }}</div>
+        <div *ngIf="!pinError" class="pin-hint-msg">Enter your assigned 4-digit staff terminal PIN</div>
+      </div>
+
+      <!-- Touch-Friendly 3x4 On-Screen Keypad -->
+      <div class="numpad-grid">
+        <button class="numpad-btn" (click)="appendPin('1')">1</button>
+        <button class="numpad-btn" (click)="appendPin('2')">2</button>
+        <button class="numpad-btn" (click)="appendPin('3')">3</button>
+
+        <button class="numpad-btn" (click)="appendPin('4')">4</button>
+        <button class="numpad-btn" (click)="appendPin('5')">5</button>
+        <button class="numpad-btn" (click)="appendPin('6')">6</button>
+
+        <button class="numpad-btn" (click)="appendPin('7')">7</button>
+        <button class="numpad-btn" (click)="appendPin('8')">8</button>
+        <button class="numpad-btn" (click)="appendPin('9')">9</button>
+
+        <button class="numpad-btn btn-clear" (click)="clearPin()">C</button>
+        <button class="numpad-btn" (click)="appendPin('0')">0</button>
+        <button class="numpad-btn btn-backspace" (click)="backspacePin()">
+          <i class="ri-delete-back-2-line"></i>
+        </button>
+      </div>
+
+      <button
+        class="btn-submit-login"
+        style="margin-top: 14px;"
+        [disabled]="pinValue.length !== 4"
+        (click)="verifyAndSubmitPin()"
+      >
+        <i class="ri-checkbox-circle-line" style="margin-right: 6px;"></i> Verify PIN & Clock-In
+      </button>
+    </div>
+
+    <!-- Footer Copyright -->
+    <div class="login-footer">
+      <span>CloudPOS Hospitality v2.4</span>
+      <span>•</span>
+      <span>Zero Hardware Lock-In</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: PAIR TERMINAL WITH OUTLET CODE -->
+<div class="modal-overlay" *ngIf="showOutletPairModal">
+  <div class="modal-dialog" style="max-width: 400px;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 16px; margin: 0; font-weight: 700; color: #0F172A;">Pair Terminal to Outlet</h3>
+      <button class="btn btn-secondary btn-sm" style="border-radius: 50%; width: 28px; height: 28px; padding: 0;" (click)="showOutletPairModal = false">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div style="padding: 20px;">
+      <p style="font-size: 13px; color: #64748B; margin-top: 0; margin-bottom: 14px;">
+        Enter your unique <b>Outlet Pairing Code</b> provided in your welcome email or by your Super Admin:
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Outlet Code (e.g. HILL-01, BLR-01, DEL-01):</label>
+        <input
+          type="text"
+          [(ngModel)]="customOutletCodeInput"
+          placeholder="e.g. HILL-01"
+          class="form-control"
+          style="font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;"
+          (keyup.enter)="pairOutlet()"
+          autofocus
+        >
+      </div>
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; font-size: 11.5px; color: #64748B;">
+        <i class="ri-lightbulb-line" style="margin-right: 4px; color: #F59E0B;"></i> <b>Demo Codes to test:</b><br>
+        • <code>HILL-01</code> ➔ Brew & Beans (Mumbai Flagship)<br>
+        • <code>BLR-01</code> ➔ The French Roast Bistro (Bengaluru)<br>
+        • <code>DEL-01</code> ➔ Roasters & Co. (Delhi NCR)
+      </div>
+    </div>
+
+    <div style="padding: 14px 20px; border-top: 1px solid #E2E8F0; display: flex; justify-content: flex-end; gap: 10px; background: #F8FAFC;">
+      <button class="btn btn-secondary" (click)="showOutletPairModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="pairOutlet()">
+        <i class="ri-check-line" style="margin-right: 4px;"></i> Save & Pair Terminal
+      </button>
+    </div>
+  </div>
+</div>

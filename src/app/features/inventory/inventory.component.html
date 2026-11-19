@@ -1,0 +1,338 @@
+<div class="inventory-page">
+  <!-- Top Title Row -->
+  <div class="inventory-title-row">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h1 class="page-title">Inventory</h1>
+        <span class="supabase-badge" title="Live Synced with Supabase Cloud DB">
+          <span class="live-dot"></span> Supabase Connected
+        </span>
+      </div>
+      <p class="page-subtitle">Ingredients, recipe costing, purchase orders, and waste</p>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="btn btn-secondary" (click)="inventoryService.refreshFromSupabase()" title="Sync from Supabase">
+        <i class="ri-refresh-line"></i> Sync DB
+      </button>
+      <button *ngIf="activeTab === 'ingredients'" class="btn btn-primary" (click)="showAddIngredientModal = true">
+        <i class="ri-add-line"></i> New ingredient
+      </button>
+      <button *ngIf="activeTab === 'orders'" class="btn btn-primary" (click)="showPoModal = true">
+        <i class="ri-file-add-line"></i> New purchase order
+      </button>
+      <button *ngIf="activeTab === 'waste'" class="btn btn-primary" (click)="openWasteModal()">
+        <i class="ri-delete-bin-line"></i> Log waste
+      </button>
+    </div>
+  </div>
+
+  <!-- Horizontal Underline Tabs (Matches Reference Image 4) -->
+  <div class="underline-tabs">
+    <button
+      class="tab-link"
+      [class.active]="activeTab === 'ingredients'"
+      (click)="activeTab = 'ingredients'"
+    >
+      Ingredients
+    </button>
+    <button
+      class="tab-link"
+      [class.active]="activeTab === 'suppliers'"
+      (click)="activeTab = 'suppliers'"
+    >
+      Suppliers
+    </button>
+    <button
+      class="tab-link"
+      [class.active]="activeTab === 'orders'"
+      (click)="activeTab = 'orders'"
+    >
+      Purchase Orders
+    </button>
+    <button
+      class="tab-link"
+      [class.active]="activeTab === 'waste'"
+      (click)="activeTab = 'waste'"
+    >
+      Waste
+    </button>
+  </div>
+
+  <!-- TAB 1: INGREDIENTS LIST (Matches Reference Image 4 Left Pane) -->
+  <div *ngIf="activeTab === 'ingredients'" class="tab-pane-content">
+    <div class="search-bar-row">
+      <input
+        type="search"
+        placeholder="Search ingredients..."
+        [(ngModel)]="searchQuery"
+        class="ing-search-input"
+      >
+    </div>
+
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Unit</th>
+            <th>Current stock</th>
+            <th>Reorder level</th>
+            <th>Avg. cost / unit</th>
+            <th>Stock value</th>
+            <th style="text-align: right;">Adjust</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let ing of filteredIngredients">
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="color: #0F172A;">{{ ing.name }}</strong>
+                <span *ngIf="ing.current_stock <= ing.reorder_level" class="low-stock-pill">
+                  ⚠ Low stock
+                </span>
+              </div>
+            </td>
+            <td>{{ ing.uom }}</td>
+            <td><strong>{{ ing.current_stock }}</strong></td>
+            <td>{{ ing.reorder_level }}</td>
+            <td>₹{{ ing.avg_unit_cost | number:'1.2-2' }}</td>
+            <td><strong>₹{{ (ing.current_stock * ing.avg_unit_cost) | number:'1.2-2' }}</strong></td>
+            <td style="text-align: right;">
+              <button class="btn btn-secondary btn-sm" (click)="selectedItemId = ing.id; openWasteModal()">
+                Adjust
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: PURCHASE ORDERS LIST (Matches Reference Image 4 Right Pane) -->
+  <div *ngIf="activeTab === 'orders'" class="tab-pane-content">
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>PO #</th>
+            <th>Supplier</th>
+            <th>Status</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let po of purchaseOrders">
+            <td><strong style="color: #0F172A;">{{ po.po_number }}</strong></td>
+            <td>{{ po.supplier_name }}</td>
+            <td>
+              <span class="po-received-badge">
+                {{ po.status }}
+              </span>
+            </td>
+            <td>{{ po.items.length || 1 }}</td>
+            <td><strong>₹{{ po.total_amount | number:'1.2-2' }}</strong></td>
+            <td>{{ po.created_at | date:'dd/MM/yyyy' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: SUPPLIERS -->
+  <div *ngIf="activeTab === 'suppliers'" class="tab-pane-content">
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Supplier Name</th>
+            <th>Contact Person</th>
+            <th>Phone</th>
+            <th>Payment Terms</th>
+            <th>Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of suppliers">
+            <td><strong>{{ s.name }}</strong></td>
+            <td>{{ s.contact_person }}</td>
+            <td>{{ s.phone }}</td>
+            <td>Net {{ s.payment_terms_days }} Days</td>
+            <td><span class="badge badge-warning">⭐ {{ s.rating }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: WASTE LOGS -->
+  <div *ngIf="activeTab === 'waste'" class="tab-pane-content">
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Item</th>
+            <th>Qty Lost</th>
+            <th>Unit Cost</th>
+            <th>Total Loss (₹)</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let w of wasteLogs">
+            <td>{{ w.created_at | date:'d MMM y, HH:mm' }}</td>
+            <td><strong>{{ w.inventory_item_name }}</strong></td>
+            <td>{{ w.quantity_wasted }} {{ w.uom }}</td>
+            <td>₹{{ w.unit_cost | number:'1.2-2' }}</td>
+            <td><strong style="color: #DC2626;">₹{{ w.total_loss_cost | number:'1.2-2' }}</strong></td>
+            <td><span class="badge badge-danger">{{ w.reason }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Ingredient Modal -->
+<div class="modal-overlay" *ngIf="showAddIngredientModal" (click)="showAddIngredientModal = false">
+  <div class="modal-dialog" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add New Ingredient</h3>
+      <button type="button" class="modal-close-btn" (click)="showAddIngredientModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Ingredient Name *</label>
+        <input type="text" [(ngModel)]="newIngName" placeholder="e.g. Arabica Coffee Beans, Paneer, Mozzarella" class="form-control" autofocus>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Unit of Measure (UOM)</label>
+          <app-custom-select
+            [options]="uomOptions"
+            [(ngModel)]="newIngUnit"
+          ></app-custom-select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Current Stock</label>
+          <input type="number" [(ngModel)]="newIngStock" min="0" step="0.5" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Reorder Level (Alert)</label>
+          <input type="number" [(ngModel)]="newIngReorder" min="0" step="0.5" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Avg. Cost / Unit (₹)</label>
+          <input type="number" [(ngModel)]="newIngCost" min="0" step="1" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showAddIngredientModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveIngredient()">Save Ingredient</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Purchase Order Modal -->
+<div class="modal-overlay" *ngIf="showPoModal" (click)="showPoModal = false">
+  <div class="modal-dialog" style="max-width: 500px;" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Create Purchase Order (PO)</h3>
+      <button type="button" class="modal-close-btn" (click)="showPoModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Supplier *</label>
+        <app-custom-select
+          [options]="supplierOptions"
+          [(ngModel)]="selectedSupplierId"
+          placeholder="Select vendor..."
+        ></app-custom-select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Item / Raw Material *</label>
+        <input type="text" [(ngModel)]="poItemName" placeholder="e.g. Sourdough Loaves, Full Cream Milk" class="form-control">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Order Quantity</label>
+          <input type="number" [(ngModel)]="poItemQty" min="1" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Est. Unit Price (₹)</label>
+          <input type="number" [(ngModel)]="poItemPrice" min="0" class="form-control">
+        </div>
+      </div>
+
+      <div style="background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 8px; padding: 12px; font-size: 13px; color: #881337; display: flex; justify-content: space-between;">
+        <span>Total PO Value:</span>
+        <strong>₹{{ (poItemQty * poItemPrice) | number:'1.2-2' }}</strong>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showPoModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="savePurchaseOrder()">Issue Purchase Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Waste Modal -->
+<div class="modal-overlay" *ngIf="showWasteModal" (click)="showWasteModal = false">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Log Inventory Waste</h3>
+      <button type="button" class="modal-close-btn" (click)="showWasteModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Select Ingredient:</label>
+        <app-custom-select
+          [options]="ingredientOptions"
+          [(ngModel)]="selectedItemId"
+          placeholder="Select ingredient..."
+        ></app-custom-select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Quantity Wasted:</label>
+        <input type="number" [(ngModel)]="wasteQty" min="0.1" step="0.5" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Reason for Disposal:</label>
+        <app-custom-select
+          [options]="wasteReasonOptions"
+          [(ngModel)]="wasteReason"
+        ></app-custom-select>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showWasteModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="submitWasteLog()">Confirm Disposal</button>
+    </div>
+  </div>
+</div>

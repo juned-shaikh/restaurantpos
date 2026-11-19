@@ -1,0 +1,216 @@
+<div class="admin-view">
+  <div class="view-header">
+    <div>
+      <h2>Outlet Settings & Module Governance</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">
+        Configure tax regime, UPI payee QR, and selectively toggle modules (Chai / QSR mode vs Full Restaurant).
+      </p>
+    </div>
+  </div>
+
+  <div class="admin-grid">
+    <!-- PANEL 1: MODULAR FEATURE TOGGLES (Chai Kiosk vs Full Dine-in) -->
+    <div class="card modules-card">
+      <div style="margin-bottom: 16px;">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <i class="ri-toggle-line" style="color: #881337;"></i> Active Feature Modules
+        </h3>
+        <p style="color: var(--text-muted); font-size: 12.5px; margin: 4px 0 0 0;">
+          Toggle off unwanted features to simplify the UI for small kiosks or quick-billing counters.
+        </p>
+      </div>
+
+      <div class="feature-toggles-list">
+        <!-- Tables Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Table & Floor Management</strong>
+            <span>2D table layout, reservations, and seat status. Turn off for Takeaway/Kiosk only.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_tables"
+            (click)="toggleModule('enable_tables')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_tables ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- KDS Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Kitchen Display System (KDS)</strong>
+            <span>Paperless kitchen screen with timers. Turn off if kitchen uses physical paper prints.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_kds"
+            (click)="toggleModule('enable_kds')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_kds ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- Inventory Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Raw Stock & Inventory</strong>
+            <span>Ingredient tracking, supplier purchase orders, and waste logging.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_inventory"
+            (click)="toggleModule('enable_inventory')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_inventory ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- Staff Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Staff Attendance & Shifts</strong>
+            <span>Terminal PIN clock-in/out and staff accounts. Turn off for owner-operated kiosks.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_staff"
+            (click)="toggleModule('enable_staff')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_staff ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- Accounting Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Accounting & Nightly Cash Closing</strong>
+            <span>Day-end drawer variance auditing, operational expenses, and P&L.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_accounting"
+            (click)="toggleModule('enable_accounting')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_accounting ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- CRM & Loyalty Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Customer CRM & Loyalty</strong>
+            <span>Customer phone profiles, reward points, and gift vouchers.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_crm"
+            (click)="toggleModule('enable_crm')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_crm ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+
+        <!-- Online QR Dine-in Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <strong>Guest Table QR Ordering</strong>
+            <span>Customer self-ordering from phone browser with Call Waiter / Bill request.</span>
+          </div>
+          <button
+            class="toggle-switch-btn"
+            [class.active]="featureFlags.enable_qr"
+            (click)="toggleModule('enable_qr')"
+          >
+            <span class="switch-knob"></span>
+            <span class="switch-text">{{ featureFlags.enable_qr ? 'Enabled' : 'Disabled' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 2: BRANCH TAX & DYNAMIC UPI SETTINGS -->
+    <div class="card">
+      <h3>Branch Outlet & Tax Settings ({{ branch?.name }})</h3>
+      <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px;">
+        Configure tax regime, inclusive/exclusive pricing, and merchant UPI QR payee details.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Branch Outlet Name</label>
+        <input class="form-control" [(ngModel)]="branchName">
+      </div>
+
+      <!-- Multi-Region Tax Regime Selector (Custom Dropdown) -->
+      <div class="form-group">
+        <label class="form-label">Tax Regime</label>
+        <app-custom-select
+          [options]="taxRegimeOptions"
+          [(ngModel)]="taxRegime"
+          (valueChange)="onRegimeChange()"
+        ></app-custom-select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tax Identification Number (GSTIN / VAT No.)</label>
+        <input class="form-control" placeholder="27AABCU9603R1ZM" [(ngModel)]="gstin">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Primary Tax Rate %</label>
+          <input type="number" class="form-control" step="0.5" [(ngModel)]="cgstPct">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Secondary Tax Rate % (e.g. SGST)</label>
+          <input type="number" class="form-control" step="0.5" [(ngModel)]="sgstPct" [disabled]="taxRegime !== 'INDIA_GST'">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 4px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+          <input type="checkbox" [(ngModel)]="isTaxInclusive">
+          Menu prices are Inclusive of Tax (Tax calculated backwards)
+        </label>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 14px;">
+        <h4 style="font-size: 14px; margin-bottom: 10px;">Dynamic UPI Payee QR Configuration</h4>
+        <div class="form-group">
+          <label class="form-label">Merchant UPI VPA / ID</label>
+          <input class="form-control" placeholder="e.g. yourcafe@icici" [(ngModel)]="upiVpa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Merchant Payee Display Name</label>
+          <input class="form-control" placeholder="e.g. Brew and Beans Bandra" [(ngModel)]="upiPayee">
+        </div>
+      </div>
+
+      <!-- Anti-Theft Manager PIN Setting -->
+      <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 14px;">
+        <h4 style="font-size: 14px; margin-bottom: 4px; color: #881337; display: flex; align-items: center; gap: 6px;">
+          <i class="ri-shield-keyhole-line"></i> Anti-Theft Manager PIN Security
+        </h4>
+        <p style="font-size: 12px; color: #64748B; margin-bottom: 10px;">
+          Used to authorize discounts &gt; 10%, voiding active kitchen orders, and audit overrides.
+        </p>
+        <div class="form-group">
+          <label class="form-label">4-Digit Manager Security PIN</label>
+          <input type="password" maxlength="6" class="form-control" placeholder="1234" [(ngModel)]="managerPin" style="width: 140px; font-size: 18px; letter-spacing: 4px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-primary" (click)="saveBranchSettings()">
+          <i class="ri-save-line" style="margin-right: 6px;"></i> Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
