@@ -261,7 +261,7 @@ export class AuthService {
   loginWithPin(pin: string, staffName: string = 'Rahul (Barista)', role: UserRole = 'WAITER'): boolean {
     if (!pin || pin.length !== 4) return false;
 
-    // PIN 9999 logs in as Super Admin Owner
+    // PIN 9999 logs in directly as Super Admin Owner
     if (pin === '9999') {
       this.setSessionUser(this.defaultSuperAdmin);
       return true;
