@@ -43,6 +43,8 @@ export class QrOrderComponent implements OnInit {
   selectedCatId: string = 'ALL';
   guestName: string = '';
   guestPhone: string = '';
+  isSubmitting: boolean = false;
+  private lastOrderTimestamp: number = 0;
 
   // Language Switcher (EN, HI)
   selectedLang: LangCode = 'EN';
@@ -186,18 +188,42 @@ export class QrOrderComponent implements OnInit {
   }
 
   submitGuestOrder(): void {
-    if (this.guestCart.length === 0 || !this.currentTable) return;
+    if (this.isSubmitting) return;
 
-    this.orderService.createOrder(
-      this.currentTable.id,
-      this.currentTable.table_number,
-      'QR_ORDER',
-      this.guestCart,
-      this.guestName || 'Self-Order Guest',
-      this.guestPhone
-    );
+    if (this.guestCart.length === 0 || !this.currentTable) {
+      this.toast.warning('Please add at least one item to your cart.');
+      return;
+    }
 
-    this.guestCart = [];
-    this.toast.success(`Thank you! Your order has been placed directly with the kitchen KDS for Table ${this.currentTable.table_number}.`, 'Order Placed');
+    const now = Date.now();
+    if (now - this.lastOrderTimestamp < 10000) {
+      this.toast.warning('Your order was just submitted. Please wait 10 seconds before placing another order.', 'Please Wait');
+      return;
+    }
+
+    // Sanity check: valid quantities & non-negative prices
+    const invalidItem = this.guestCart.find(i => !i.quantity || i.quantity <= 0 || i.quantity > 50 || i.unit_price < 0);
+    if (invalidItem) {
+      this.toast.error('Invalid quantity or price detected in cart.', 'Order Error');
+      return;
+    }
+
+    this.isSubmitting = true;
+    try {
+      this.orderService.createOrder(
+        this.currentTable.id,
+        this.currentTable.table_number,
+        'QR_ORDER',
+        this.guestCart,
+        this.guestName?.trim() || 'Self-Order Guest',
+        this.guestPhone?.trim() || ''
+      );
+
+      this.lastOrderTimestamp = Date.now();
+      this.guestCart = [];
+      this.toast.success(`Thank you! Your order has been placed directly with the kitchen KDS for Table ${this.currentTable.table_number}.`, 'Order Placed');
+    } finally {
+      this.isSubmitting = false;
+    }
   }
 }

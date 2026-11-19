@@ -3,6 +3,7 @@ import { KdsService } from '../../core/services/kds.service';
 import { KotTicket, KitchenStation, KdsPerformanceMetric } from '../../core/models/kds.model';
 import { PrintService } from '../../core/services/print.service';
 import { ToastService } from '../../core/services/toast.service';
+import { SecurityService } from '../../core/services/security.service';
 
 @Component({
   selector: 'app-kds',
@@ -33,7 +34,8 @@ export class KdsComponent implements OnInit, OnDestroy {
   constructor(
     public kdsService: KdsService,
     public printService: PrintService,
-    private toast: ToastService
+    private toast: ToastService,
+    private securityService: SecurityService
   ) {}
 
   ngOnInit(): void {
@@ -120,8 +122,8 @@ export class KdsComponent implements OnInit, OnDestroy {
 
     // If food already being cooked, manager confirmation is required
     if (this.ticketToReject.status === 'PREPARING') {
-      if (this.managerPin !== '1234') {
-        this.toast.error('Food is already being cooked! Valid Manager PIN (default: 1234) is required to reject.', 'Manager Auth Required');
+      if (!this.securityService.verifyPin(this.managerPin)) {
+        this.toast.error('Food is already being cooked! Valid Manager PIN is required to reject.', 'Manager Auth Required');
         return;
       }
     }

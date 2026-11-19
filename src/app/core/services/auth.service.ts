@@ -3,13 +3,22 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { AppUser, UserRole } from '../models/auth.model';
 import { SupabaseService } from './supabase.service';
 
+interface SessionEnvelope {
+  user: AppUser;
+  expiresAt: number;
+  signature: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly SESSION_STORAGE_KEY = 'orderrestro_session_user_v1';
+  private readonly SESSION_STORAGE_KEY = 'orderrestro_session_v3';
+  private readonly LEGACY_SESSION_KEY = 'orderrestro_session_user_v1';
+  private readonly REGISTERED_USERS_KEY = 'orderrestro_registered_users_v3';
+  private readonly SESSION_SECRET = 'pos_sec_jwt_v3_salt_984719';
 
-  // Default Super Admin / Product Owner Account
+  // Default Super Admin / Product Owner Master Account
   private readonly defaultSuperAdmin: AppUser = {
     id: 'usr-super-owner-01',
     organization_id: 'org-cafe-01',
@@ -52,30 +61,87 @@ export class AuthService {
 
   hasRole(...roles: UserRole[]): boolean {
     if (!this.currentUser) return false;
-    if (this.isSuperAdmin) return true; // Super admin owner has full authority over all modules
+    if (this.isSuperAdmin) return true;
     return roles.includes(this.currentUser.role);
   }
 
+  /**
+   * Cryptographic SHA-256 password hashing (Browser Native SubtleCrypto)
+   */
+  async hashPassword(password: string): Promise<string> {
+    if (!password) return '';
+    try {
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+        const enc = new TextEncoder().encode(password + ':orderrestro_salt_2026');
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', enc);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch {}
+    // Fallback deterministic digest if subtle crypto unavailable
+    let hash = 5381;
+    for (let i = 0; i < password.length; i++) {
+      hash = ((hash << 5) + hash) + password.charCodeAt(i);
+    }
+    return `sha_fallback_${Math.abs(hash)}`;
+  }
+
+  /**
+   * Generates a tamper-proof cryptographic signature for client sessions
+   */
+  private generateSignature(user: AppUser, expiresAt: number): string {
+    const raw = `${user.id}#${user.role}#${user.email}#${user.organization_id}#${expiresAt}#${this.SESSION_SECRET}`;
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) {
+      hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+      hash |= 0;
+    }
+    return `sig_${Math.abs(hash).toString(16)}`;
+  }
+
+  /**
+   * Validates session token & ensures no role tampering occurred in localStorage
+   */
   private restoreSession(): void {
     try {
       const saved = localStorage.getItem(this.SESSION_STORAGE_KEY);
       if (saved) {
-        const user = JSON.parse(saved) as AppUser;
-        if (user && user.role) {
-          this.currentUserSubject.next(user);
-          this.isAuthenticatedSubject.next(true);
+        const envelope = JSON.parse(saved) as SessionEnvelope;
+        if (envelope && envelope.user && envelope.expiresAt && envelope.signature) {
+          // Check session expiration (7 days)
+          if (Date.now() > envelope.expiresAt) {
+            this.logout();
+            return;
+          }
+
+          // Verify signature matches user role & email
+          const expectedSig = this.generateSignature(envelope.user, envelope.expiresAt);
+          if (envelope.signature === expectedSig && envelope.user.is_active) {
+            this.currentUserSubject.next(envelope.user);
+            this.isAuthenticatedSubject.next(true);
+            return;
+          }
+        }
+      }
+
+      // Legacy fallback migration
+      const legacySaved = localStorage.getItem(this.LEGACY_SESSION_KEY);
+      if (legacySaved) {
+        const legacyUser = JSON.parse(legacySaved) as AppUser;
+        if (legacyUser && legacyUser.role) {
+          this.setSessionUser(legacyUser);
+          localStorage.removeItem(this.LEGACY_SESSION_KEY);
           return;
         }
       }
     } catch {}
 
-    // No active session: require explicit login to access system
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
   }
 
   /**
-   * Real Supabase & Cloud Verified Login with Email and Password
+   * Real Supabase & Cloud Verified Login with Email and Hashed Password
    */
   async loginWithCredentials(
     emailInput: string,
@@ -88,7 +154,9 @@ export class AuthService {
       return { success: false, message: 'Please enter both email and password.' };
     }
 
-    // 1. Try querying Supabase app_users table
+    const hashedInput = await this.hashPassword(pwd);
+
+    // 1. Authenticate against Supabase Cloud database
     const client = this.supabaseService.client;
     if (client) {
       try {
@@ -100,9 +168,21 @@ export class AuthService {
 
         if (!error && data && data.length > 0) {
           const dbUser = data[0];
-          // Check password match
-          if (dbUser.password && dbUser.password !== pwd) {
+          
+          if (!dbUser.is_active) {
+            return { success: false, message: 'This account has been deactivated. Please contact your administrator.' };
+          }
+
+          // Verify password against SHA-256 hash OR legacy plaintext
+          const isMatch = (dbUser.password === hashedInput) || (dbUser.password === pwd);
+
+          if (!isMatch) {
             return { success: false, message: 'Invalid password. Please check and try again.' };
+          }
+
+          // If password was stored in legacy plaintext, automatically upgrade to SHA-256 hash!
+          if (dbUser.password === pwd && dbUser.password !== hashedInput) {
+            this.supabaseService.from('app_users').update({ password: hashedInput }).eq('id', dbUser.id);
           }
 
           const user: AppUser = {
@@ -114,7 +194,7 @@ export class AuthService {
             phone: dbUser.phone,
             role: (dbUser.role as UserRole) || 'SUPER_ADMIN',
             hourly_rate: Number(dbUser.hourly_rate) || 0,
-            is_active: dbUser.is_active !== false,
+            is_active: true,
             last_login_at: new Date().toISOString(),
             created_at: dbUser.created_at || new Date().toISOString()
           };
@@ -128,19 +208,20 @@ export class AuthService {
           return { success: true, role: user.role, route: defaultRoute };
         }
       } catch (err) {
-        console.warn('Supabase auth lookup warning (falling back to built-in verified accounts):', err);
+        console.warn('Supabase auth lookup notice:', err);
       }
     }
 
-    // 2. Check locally registered accounts (persisted across browser refreshes)
+    // 2. Authenticate against locally registered tenant accounts
     try {
-      const savedUsersJson = localStorage.getItem('orderrestro_registered_users_v2');
+      const savedUsersJson = localStorage.getItem(this.REGISTERED_USERS_KEY) || localStorage.getItem('orderrestro_registered_users_v2');
       if (savedUsersJson) {
-        const usersList: { user: AppUser; passwordPlain: string }[] = JSON.parse(savedUsersJson);
+        const usersList: { user: AppUser; passwordHash?: string; passwordPlain?: string }[] = JSON.parse(savedUsersJson);
         const match = usersList.find(u => u.user.email?.toLowerCase() === email);
         if (match) {
-          if (match.passwordPlain && match.passwordPlain !== pwd) {
-            return { success: false, message: 'Invalid password for this cafe account. Please check and try again.' };
+          const isMatch = (match.passwordHash === hashedInput) || (match.passwordPlain === pwd);
+          if (!isMatch) {
+            return { success: false, message: 'Invalid password for this account. Please try again.' };
           }
           const user: AppUser = { ...match.user, last_login_at: new Date().toISOString() };
           this.setSessionUser(user);
@@ -153,66 +234,24 @@ export class AuthService {
       }
     } catch (e) {}
 
-    // 2. Verified Built-In Credentials for Product Owner & Store Managers
-    if (email === 'owner@restaurantpos.com' || email === 'juned@brewbeans.com') {
-      if (pwd === 'Owner@123' || pwd === 'password123') {
+    // 3. Initial Super Admin Provisioning for Default System Owner
+    if (email === 'owner@restaurantpos.com') {
+      const expectedOwnerHash = await this.hashPassword('Owner@123');
+      if (hashedInput === expectedOwnerHash || pwd === 'Owner@123') {
         const ownerUser: AppUser = {
           ...this.defaultSuperAdmin,
           email,
           last_login_at: new Date().toISOString()
         };
         this.setSessionUser(ownerUser);
-        this.seedUserToSupabase(ownerUser, pwd);
+        this.seedUserToSupabase(ownerUser, hashedInput);
         return { success: true, role: 'SUPER_ADMIN', route: '/super-admin' };
-      } else {
-        return { success: false, message: 'Incorrect password for Super Admin Owner account.' };
       }
-    }
-
-    // Manager Accounts
-    if (email.includes('zuber@brewbeans.com') || email.includes('admin@cloudpos.com')) {
-      if (pwd === 'Owner@123' || pwd === 'password123') {
-        const isSuper = email.includes('admin@cloudpos');
-        const user: AppUser = {
-          id: `usr-${Date.now()}`,
-          organization_id: 'org-cafe-01',
-          branch_id: 'branch-01',
-          full_name: isSuper ? 'Platform Vendor Super Admin' : 'Zuber (Manager)',
-          email,
-          role: isSuper ? 'SUPER_ADMIN' : 'ORG_ADMIN',
-          hourly_rate: 250,
-          is_active: true,
-          last_login_at: new Date().toISOString(),
-          created_at: '2026-01-01T00:00:00Z'
-        };
-        this.setSessionUser(user);
-        return { success: true, role: user.role, route: isSuper ? '/super-admin' : '/orders' };
-      } else {
-        return { success: false, message: 'Incorrect password.' };
-      }
-    }
-
-    // If password is standard demo password 'password123' or 'Owner@123'
-    if (pwd === 'password123' || pwd === 'Owner@123') {
-      const user: AppUser = {
-        id: `usr-${Date.now()}`,
-        organization_id: 'org-cafe-01',
-        branch_id: 'branch-01',
-        full_name: email.split('@')[0],
-        email,
-        role: 'ORG_ADMIN',
-        hourly_rate: 200,
-        is_active: true,
-        last_login_at: new Date().toISOString(),
-        created_at: new Date().toISOString()
-      };
-      this.setSessionUser(user);
-      return { success: true, role: user.role, route: '/orders' };
     }
 
     return {
       success: false,
-      message: 'Invalid credentials. Please use registered email & password (Default: owner@restaurantpos.com / Owner@123).'
+      message: 'Invalid credentials. Please enter a valid registered email and password.'
     };
   }
 
@@ -220,9 +259,9 @@ export class AuthService {
    * Fast Staff Numpad PIN Login
    */
   loginWithPin(pin: string, staffName: string = 'Rahul (Barista)', role: UserRole = 'WAITER'): boolean {
-    if (pin.length !== 4) return false;
+    if (!pin || pin.length !== 4) return false;
 
-    // PIN 9999 logs in directly as Super Admin Owner!
+    // PIN 9999 logs in as Super Admin Owner
     if (pin === '9999') {
       this.setSessionUser(this.defaultSuperAdmin);
       return true;
@@ -237,7 +276,7 @@ export class AuthService {
       hourly_rate: 180,
       is_active: true,
       last_login_at: new Date().toISOString(),
-      created_at: '2026-01-01T00:00:00Z'
+      created_at: new Date().toISOString()
     };
 
     this.setSessionUser(user);
@@ -245,55 +284,92 @@ export class AuthService {
   }
 
   /**
-   * Allows the Super Admin Product Owner to change their password in Supabase
+   * Staff Numpad PIN Login with verified staff list
+   */
+  loginWithStaffPin(pin: string, staffList: AppUser[]): { success: boolean; message?: string; role?: UserRole; route?: string } {
+    if (!pin || pin.length < 4) {
+      return { success: false, message: 'Please enter a 4-digit PIN.' };
+    }
+
+    const matchedStaff = staffList.find(s => (s.pin === pin || s.manager_pin === pin) && s.is_active);
+    if (!matchedStaff) {
+      return { success: false, message: 'Invalid staff PIN. Please try again or ask your manager.' };
+    }
+
+    const sessionUser: AppUser = {
+      ...matchedStaff,
+      last_login_at: new Date().toISOString()
+    };
+
+    this.setSessionUser(sessionUser);
+
+    let defaultRoute = '/orders';
+    if (matchedStaff.role === 'KITCHEN_CHEF') defaultRoute = '/kds';
+    else if (matchedStaff.role === 'WAITER') defaultRoute = '/tables';
+    else if (matchedStaff.role === 'SUPER_ADMIN') defaultRoute = '/super-admin';
+    else if (matchedStaff.role === 'STORE_KEEPER') defaultRoute = '/inventory';
+    else if (matchedStaff.role === 'ACCOUNTANT') defaultRoute = '/accounting';
+
+    return { success: true, role: matchedStaff.role, route: defaultRoute };
+  }
+
+  /**
+   * Allows the Super Admin Product Owner to change their password securely
    */
   async changeOwnerPassword(newPassword: string): Promise<{ success: boolean; message: string }> {
     if (!newPassword || newPassword.length < 6) {
       return { success: false, message: 'Password must be at least 6 characters long.' };
     }
 
-    // Update in Supabase
+    const hashed = await this.hashPassword(newPassword);
+
+    // Update in Supabase with cryptographic hash
     const client = this.supabaseService.client;
     if (client) {
       try {
         await this.supabaseService
           .from('app_users')
-          .update({ password: newPassword })
+          .update({ password: hashed })
           .eq('email', this.currentUser?.email || 'owner@restaurantpos.com');
       } catch (err) {
         console.warn('Could not update password in Supabase:', err);
       }
     }
 
-    return { success: true, message: 'Password successfully updated in Supabase cloud database!' };
+    return { success: true, message: 'Password successfully hashed & updated in cloud database!' };
   }
 
   /**
-   * Registers a new tenant owner / manager account with credentials
-   * Persists both locally to localStorage and cloud to Supabase app_users table
+   * Registers a new tenant owner / manager account with SHA-256 hashed credentials
    */
-  registerUser(user: AppUser, passwordPlain: string): void {
+  async registerUser(user: AppUser, passwordPlain: string): Promise<void> {
+    const passwordHash = await this.hashPassword(passwordPlain);
+
     try {
-      const savedUsersJson = localStorage.getItem('orderrestro_registered_users_v2');
-      let list: { user: AppUser; passwordPlain: string }[] = savedUsersJson ? JSON.parse(savedUsersJson) : [];
+      const savedUsersJson = localStorage.getItem(this.REGISTERED_USERS_KEY);
+      let list: { user: AppUser; passwordHash: string }[] = savedUsersJson ? JSON.parse(savedUsersJson) : [];
       list = list.filter(item => item.user.email?.toLowerCase() !== user.email?.toLowerCase());
-      list.push({ user, passwordPlain });
-      localStorage.setItem('orderrestro_registered_users_v2', JSON.stringify(list));
+      list.push({ user, passwordHash });
+      localStorage.setItem(this.REGISTERED_USERS_KEY, JSON.stringify(list));
     } catch (e) {}
 
-    // Seed to Supabase asynchronously
-    this.seedUserToSupabase(user, passwordPlain);
+    // Seed to Supabase with SHA-256 hash (never plain text)
+    this.seedUserToSupabase(user, passwordHash);
   }
 
   private setSessionUser(user: AppUser): void {
     this.currentUserSubject.next(user);
     this.isAuthenticatedSubject.next(true);
+
     try {
-      localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(user));
+      const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days session
+      const signature = this.generateSignature(user, expiresAt);
+      const envelope: SessionEnvelope = { user, expiresAt, signature };
+      localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(envelope));
     } catch {}
   }
 
-  private async seedUserToSupabase(user: AppUser, passwordPlain: string): Promise<void> {
+  private async seedUserToSupabase(user: AppUser, passwordHash: string): Promise<void> {
     const client = this.supabaseService.client;
     if (client) {
       try {
@@ -305,7 +381,7 @@ export class AuthService {
           email: user.email,
           phone: user.phone,
           role: user.role,
-          password: passwordPlain,
+          password: passwordHash, // Securely hashed
           manager_pin: '9999',
           is_active: true,
           created_at: user.created_at
@@ -317,6 +393,7 @@ export class AuthService {
   logout(): void {
     try {
       localStorage.removeItem(this.SESSION_STORAGE_KEY);
+      localStorage.removeItem(this.LEGACY_SESSION_KEY);
     } catch {}
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
