@@ -290,8 +290,8 @@ export class CustomerDisplayComponent implements OnInit, OnDestroy {
       return;
     }
     const branch = this.activeBranch || this.tenantService.activeBranch;
-    const vpa = branch?.upi_vpa || 'brewbeans@icici';
-    const payee = branch?.upi_payee_name || branch?.name || 'Brew & Beans Artisan Cafe';
+    const vpa = branch?.upi_vpa || 'restaurant@upi';
+    const payee = branch?.upi_payee_name || branch?.name || 'Restaurant POS';
     const orderNo = this.activeOrder.order_number || 'LiveTill';
     const amount = Number(this.activeOrder.total_amount) || 0;
 

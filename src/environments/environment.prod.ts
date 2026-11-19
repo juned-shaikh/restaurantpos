@@ -3,14 +3,14 @@ export const environment = {
   supabaseUrl: 'https://csgfkqfffafjjlhmoygc.supabase.co',
   supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzZ2ZrcWZmZmFmampsaG1veWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyMjQ1MzAsImV4cCI6MjEwOTgwMDUzMH0.2XmDNtYerw4ltuJLpJ3pRV_EAtzBOu63rdEmzLY4hzU',
   restaurant: {
-    name: 'Brew & Beans Artisan Cafe',
-    legalName: 'Brew & Beans Hospitality LLP',
-    address: 'Shop 4, Hill Road, Bandra West, Mumbai',
-    phone: '+91 98200 11223',
-    gstNumber: '27AABCU9603R1ZM',
+    name: 'Restaurant POS',
+    legalName: 'Restaurant Hospitality Services',
+    address: 'Main Commercial High Street',
+    phone: '+91 98000 00000',
+    gstNumber: '27AAAAA0000A1Z5',
     currency: 'INR',
     currencySymbol: '₹',
-    upiVpa: 'brewbeans@icici',
-    upiPayeeName: 'Brew & Beans Artisan Cafe'
+    upiVpa: 'restaurant@upi',
+    upiPayeeName: 'Restaurant POS'
   }
 };

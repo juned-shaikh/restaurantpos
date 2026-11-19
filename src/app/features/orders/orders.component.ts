@@ -547,7 +547,7 @@ export class OrdersComponent implements OnInit {
     const branch = this.tenantService.activeBranch;
     const amount = this.paymentMode === 'SPLIT' ? this.remainingBalance : this.activeOrderToSettle.total_amount;
     this.upiIntentQrUri = this.taxCalculator.generateUpiIntentString(
-      branch.upi_vpa || 'brewbeans@icici',
+      branch.upi_vpa || 'restaurant@upi',
       branch.upi_payee_name || branch.name,
       amount,
       this.activeOrderToSettle.order_number

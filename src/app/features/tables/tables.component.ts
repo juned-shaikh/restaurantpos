@@ -135,7 +135,7 @@ export class TablesComponent implements OnInit {
     // Generate UPI URI
     const branch = this.tenantService.activeBranch;
     this.tableSettleUpiUri = this.taxCalculator.generateUpiIntentString(
-      branch.upi_vpa || 'brewbeans@icici',
+      branch.upi_vpa || 'restaurant@upi',
       branch.upi_payee_name || branch.name,
       order.total_amount,
       order.order_number

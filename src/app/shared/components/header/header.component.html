@@ -73,35 +73,25 @@
           <div style="font-size: 11px; color: #64748B; margin-top: 2px;">Cafe: {{ currentOrg.name }}</div>
         </div>
 
-        <div class="dropdown-section-title">SWITCH CAFE (TENANT)</div>
-        <button
-          *ngFor="let t of (tenantService.tenants$ | async)"
-          class="dropdown-item"
-          (click)="switchCafe(t.id)"
-          [style.fontWeight]="currentOrg.id === t.id ? '700' : 'normal'"
-        >
-          <i class="ri-store-2-line" style="color: #881337; font-size: 15px;"></i>
-          <span>{{ t.name }} ({{ t.city || 'Outlet' }})</span>
-        </button>
+        <!-- Super Admin Only: Switch Between Client Tenants -->
+        <ng-container *ngIf="authService.isSuperAdmin">
+          <div class="dropdown-section-title">SWITCH CAFE (TENANT)</div>
+          <button
+            *ngFor="let t of (tenantService.tenants$ | async)"
+            class="dropdown-item"
+            (click)="switchCafe(t.id)"
+            [style.fontWeight]="currentOrg.id === t.id ? '700' : 'normal'"
+          >
+            <i class="ri-store-2-line" style="color: #881337; font-size: 15px;"></i>
+            <span>{{ t.name }} ({{ t.city || 'Outlet' }})</span>
+          </button>
 
-        <div class="dropdown-section-title">FAST ROLE SWITCH (RBAC DEMO)</div>
-        <button class="dropdown-item" (click)="switchRole('ORG_ADMIN', 'Zuber (Manager)')">
-          <i class="ri-user-star-line" style="color: #4F46E5; font-size: 15px;"></i> Restaurant Manager (Full Access)
-        </button>
-        <button class="dropdown-item" (click)="switchRole('CASHIER', 'Pooja (Cashier)')">
-          <i class="ri-shopping-cart-2-line" style="color: #16A34A; font-size: 15px;"></i> Cashier (Billing & Tables Only)
-        </button>
-        <button class="dropdown-item" (click)="switchRole('WAITER', 'Priya (Floor Captain)')">
-          <i class="ri-restaurant-line" style="color: #D97706; font-size: 15px;"></i> Waiter (Tables & Orders Only)
-        </button>
-        <button class="dropdown-item" (click)="switchRole('KITCHEN_CHEF', 'Chef Vikram (Head Chef)')">
-          <i class="ri-fire-line" style="color: #DC2626; font-size: 15px;"></i> Kitchen Head Chef (KDS & Menu Only)
-        </button>
+          <div class="dropdown-divider"></div>
+          <a routerLink="/super-admin" class="dropdown-item" (click)="showUserDropdown = false">
+            <i class="ri-vip-crown-2-line" style="color: #D97706; font-size: 15px;"></i> Open SaaS Super Admin Portal
+          </a>
+        </ng-container>
 
-        <div class="dropdown-divider"></div>
-        <a routerLink="/super-admin" class="dropdown-item" (click)="showUserDropdown = false">
-          <i class="ri-vip-crown-2-line" style="color: #D97706; font-size: 15px;"></i> Open SaaS Super Admin Portal
-        </a>
         <a routerLink="/staff" class="dropdown-item" (click)="showUserDropdown = false">
           <i class="ri-time-line" style="color: #0284C7; font-size: 15px;"></i> Staff Attendance & Clock-In Terminal
         </a>

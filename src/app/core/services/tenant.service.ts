@@ -13,42 +13,40 @@ export class TenantService {
   // Master Initial Cafes / Tenants
   private readonly defaultTenants: SaasTenantSummary[] = [
     {
-      id: 'org-cafe-01',
-      name: 'Brew & Beans Artisan Cafe',
-      slug: 'brew-and-beans',
-      owner_name: 'Juned Khan',
-      owner_email: 'juned@brewbeans.com',
-      owner_phone: '+91 98765 43210',
-      logo_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=120&auto=format&fit=crop&q=80',
+      id: 'org-default',
+      name: 'Restaurant POS',
+      slug: 'restaurant-pos',
+      owner_name: 'Store Owner',
+      owner_email: 'owner@restaurantpos.com',
+      owner_phone: '+91 98000 00000',
       tier: 'GROWTH',
       subscription_status: 'ACTIVE',
       subscription_ends_at: '2026-12-31T23:59:59Z',
-      max_branches: 3,
+      max_branches: 1,
       is_active: true,
-      active_outlets: 2,
-      monthly_revenue: 2999,
-      city: 'Mumbai',
-      created_at: '2026-01-15T00:00:00Z',
-      updated_at: '2026-01-15T00:00:00Z',
+      active_outlets: 1,
+      monthly_revenue: 0,
+      city: 'Main Branch',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
       branches: [
         {
           id: 'branch-01',
-          organization_id: 'org-cafe-01',
-          name: 'Main Flagship (Hill Road)',
-          code: 'HILL-01',
-          address: 'Shop 4, Hill Road, Bandra West',
-          city: 'Mumbai',
-          state: 'Maharashtra',
-          postal_code: '400050',
-          phone: '+91 98200 11223',
-          email: 'hillroad@brewbeans.com',
-          gstin: '27AABCU9603R1ZM',
+          organization_id: 'org-default',
+          name: 'Main Outlet',
+          code: 'MAIN-01',
+          address: 'Main Commercial High Street',
+          city: 'Main Outlet',
+          state: '',
+          postal_code: '400001',
+          phone: '+91 98000 00000',
+          email: 'owner@restaurantpos.com',
           tax_regime: 'INDIA_GST',
           is_tax_inclusive: false,
           default_cgst_pct: 2.50,
           default_sgst_pct: 2.50,
-          upi_vpa: 'brewbeans@icici',
-          upi_payee_name: 'Brew and Beans Bandra',
+          upi_vpa: '',
+          upi_payee_name: '',
           currency: 'INR',
           currency_symbol: '₹',
           timezone: 'Asia/Kolkata',
@@ -63,39 +61,6 @@ export class TenantService {
           },
           is_active: true,
           created_at: '2026-01-01T00:00:00Z'
-        },
-        {
-          id: 'branch-02',
-          organization_id: 'org-cafe-01',
-          name: 'Cyber City Outlet',
-          code: 'CYBER-02',
-          address: 'Tower B Ground Floor, DLF CyberHub',
-          city: 'Gurugram',
-          state: 'Haryana',
-          postal_code: '122002',
-          phone: '+91 98111 22334',
-          email: 'cyber@brewbeans.com',
-          gstin: '06AABCU9603R1ZN',
-          tax_regime: 'INDIA_GST',
-          is_tax_inclusive: false,
-          default_cgst_pct: 2.50,
-          default_sgst_pct: 2.50,
-          upi_vpa: 'brewbeansggn@hdfcbank',
-          upi_payee_name: 'Brew and Beans CyberHub',
-          currency: 'INR',
-          currency_symbol: '₹',
-          timezone: 'Asia/Kolkata',
-          feature_flags: {
-            enable_tables: true,
-            enable_kds: true,
-            enable_inventory: true,
-            enable_staff: true,
-            enable_crm: true,
-            enable_qr: true,
-            enable_accounting: true
-          },
-          is_active: true,
-          created_at: '2026-02-01T00:00:00Z'
         }
       ]
     }
@@ -137,7 +102,9 @@ export class TenantService {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          loadedTenants = parsed;
+          // Purge any legacy 'Brew & Beans' or 'org-cafe-01'
+          loadedTenants = parsed.filter((t: any) => t.id !== 'org-cafe-01' && !t.name?.toLowerCase().includes('brew & beans') && t.slug !== 'brew-and-beans');
+          this.saveTenantsLocally(loadedTenants);
         }
       }
     } catch {}
@@ -152,11 +119,15 @@ export class TenantService {
     // 2. Restore active organization if previously selected
     try {
       const savedOrgId = localStorage.getItem(this.STORAGE_KEY_ACTIVE_ORG);
-      if (savedOrgId) {
+      if (savedOrgId && savedOrgId !== 'org-cafe-01') {
         const found = loadedTenants.find(t => t.id === savedOrgId);
         if (found) {
           this.switchTenant(found.id);
+        } else if (loadedTenants.length > 0) {
+          this.switchTenant(loadedTenants[0].id);
         }
+      } else if (loadedTenants.length > 0) {
+        this.switchTenant(loadedTenants[0].id);
       }
     } catch {}
 
@@ -170,11 +141,14 @@ export class TenantService {
       try {
         const { data, error } = await this.supabaseService.from('organizations').select('*');
         if (!error && data && data.length > 0) {
-          const current = this.tenantsSubject.value;
+          // Filter out legacy dummy tenants
+          const cleanData = data.filter((org: any) => org.id !== 'org-cafe-01' && !org.name?.toLowerCase().includes('brew & beans') && org.slug !== 'brew-and-beans');
+          
+          const current = this.tenantsSubject.value.filter(t => t.id !== 'org-cafe-01' && !t.name?.toLowerCase().includes('brew & beans') && (cleanData.length > 0 ? t.id !== 'org-default' : true));
           const merged = [...current];
 
-          for (const org of data) {
-            const idx = merged.findIndex(m => m.id === org.id);
+          for (const org of cleanData) {
+            const idx = merged.findIndex((m: any) => m.id === org.id);
             if (idx >= 0) {
               merged[idx] = { ...merged[idx], ...org };
             } else {
@@ -182,13 +156,15 @@ export class TenantService {
                 ...org,
                 active_outlets: org.active_outlets || 1,
                 monthly_revenue: Number(org.monthly_revenue) || 0,
-                city: org.city || 'Mumbai'
+                city: org.city || 'Outlet'
               });
             }
           }
 
-          this.tenantsSubject.next(merged);
-          this.saveTenantsLocally(merged);
+          if (merged.length > 0) {
+            this.tenantsSubject.next(merged);
+            this.saveTenantsLocally(merged);
+          }
         }
       } catch (err) {
         console.warn('⚠️ [Tenant] Could not sync cloud organizations:', err);

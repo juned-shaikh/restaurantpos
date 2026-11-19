@@ -22,8 +22,8 @@ export class LoginComponent implements OnInit {
   isLoading: boolean = false;
 
   // Terminal Outlet Pairing (For Physical POS Tablet Terminals)
-  activeOutletCode: string = 'HILL-01';
-  activeOutletName: string = 'Brew & Beans Flagship (Mumbai)';
+  activeOutletCode: string = 'MAIN-01';
+  activeOutletName: string = 'Main Restaurant Branch';
   showOutletPairModal: boolean = false;
   customOutletCodeInput: string = '';
 
@@ -37,8 +37,7 @@ export class LoginComponent implements OnInit {
 
   // 1-Click Fast Credentials for testing
   demoAccounts = [
-    { label: '👑 Super Admin (Owner)', email: 'owner@restaurantpos.com', role: 'SUPER_ADMIN' as UserRole, name: 'Juned Khan (Owner & Super Admin)', cafeId: 'org-cafe-01', route: '/super-admin' },
-    { label: '☕ Flagship Cafe (Manager)', email: 'zuber@brewbeans.com', role: 'ORG_ADMIN' as UserRole, name: 'Zuber (Manager)', cafeId: 'org-cafe-01', route: '/orders' }
+    { label: '👑 Super Admin (Product Owner)', email: 'owner@restaurantpos.com', role: 'SUPER_ADMIN' as UserRole, name: 'Juned Khan (Owner & Super Admin)', cafeId: 'org-default', route: '/super-admin' }
   ];
 
   constructor(
