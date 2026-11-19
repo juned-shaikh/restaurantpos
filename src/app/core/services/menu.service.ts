@@ -94,7 +94,7 @@ export class MenuService {
         .eq('organization_id', orgId)
         .order('display_order', { ascending: true });
 
-      if (!catErr && catData) {
+      if (!catErr && catData && catData.length > 0) {
         this.categoriesSubject.next(catData);
         this.persistCategoriesLocally();
       }
@@ -106,7 +106,7 @@ export class MenuService {
         .eq('organization_id', orgId)
         .order('display_order', { ascending: true });
 
-      if (!itemErr && itemData) {
+      if (!itemErr && itemData && itemData.length > 0) {
         this.itemsSubject.next(itemData);
         this.persistItemsLocally();
       }
@@ -245,7 +245,7 @@ export class MenuService {
   private async saveCategoryToSupabase(cat: MenuCategory): Promise<void> {
     try {
       if (this.supabaseService.client) {
-        await this.supabaseService.from('menu_categories').upsert({
+        const { error } = await this.supabaseService.from('menu_categories').upsert({
           id: cat.id,
           organization_id: cat.organization_id || this.currentOrgId,
           name: cat.name,
@@ -255,14 +255,19 @@ export class MenuService {
           kitchen_station_id: cat.kitchen_station_id || 'st-01',
           is_active: cat.is_active ?? true
         });
+        if (error) {
+          console.warn('⚠️ [MenuService] Supabase menu_categories notice:', error.message || error);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('⚠️ [MenuService] Could not save category to Supabase:', e);
+    }
   }
 
   private async saveMenuItemToSupabase(item: MenuItem): Promise<void> {
     try {
       if (this.supabaseService.client) {
-        await this.supabaseService.from('menu_items').upsert({
+        const { error } = await this.supabaseService.from('menu_items').upsert({
           id: item.id,
           organization_id: item.organization_id || this.currentOrgId,
           category_id: item.category_id,
@@ -281,8 +286,13 @@ export class MenuService {
           display_order: item.display_order || 1,
           is_combo: item.is_combo ?? false
         });
+        if (error) {
+          console.warn('⚠️ [MenuService] Supabase menu_items notice:', error.message || error);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('⚠️ [MenuService] Could not save menu item to Supabase:', e);
+    }
   }
 
   private async deleteMenuItemFromSupabase(itemId: string): Promise<void> {
