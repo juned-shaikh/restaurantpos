@@ -10,6 +10,7 @@ import { AppComponent } from './app.component';
 import { HeaderComponent } from './shared/components/header/header.component';
 import { SidebarComponent } from './shared/components/sidebar/sidebar.component';
 import { CustomSelectComponent } from './shared/components/custom-select/custom-select.component';
+import { ToastComponent } from './shared/components/toast/toast.component';
 
 // Feature Components (11 Scoped Modules + Super Admin SaaS)
 import { TablesComponent } from './features/tables/tables.component';
@@ -48,7 +49,8 @@ import { LoginComponent } from './features/login/login.component';
     SuperAdminComponent,
     CustomerDisplayComponent,
     LoginComponent,
-    CustomSelectComponent
+    CustomSelectComponent,
+    ToastComponent
   ],
   imports: [
     BrowserModule,

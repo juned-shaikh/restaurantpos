@@ -4,6 +4,7 @@ import { MenuService } from '../../core/services/menu.service';
 import { OrderService } from '../../core/services/order.service';
 import { TableService } from '../../core/services/table.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ToastService } from '../../core/services/toast.service';
 import { MenuItem, MenuCategory } from '../../core/models/menu.model';
 import { OrderItem } from '../../core/models/order.model';
 import { Table } from '../../core/models/table.model';
@@ -80,7 +81,8 @@ export class QrOrderComponent implements OnInit {
     public orderService: OrderService,
     public tableService: TableService,
     public tenantService: TenantService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -169,7 +171,7 @@ export class QrOrderComponent implements OnInit {
       'CALL_WAITER',
       'Guest requested captain assistance'
     );
-    alert(`Captain alerted! A waiter is on their way to Table ${this.currentTable.table_number}.`);
+    this.toast.success(`Captain alerted! A waiter is on their way to Table ${this.currentTable.table_number}.`, 'Waiter Called');
   }
 
   requestBill(): void {
@@ -180,7 +182,7 @@ export class QrOrderComponent implements OnInit {
       'REQUEST_BILL',
       'Guest requested printed bill and payment'
     );
-    alert(`Bill requested for Table ${this.currentTable.table_number}! Cashier notified.`);
+    this.toast.info(`Bill requested for Table ${this.currentTable.table_number}! Cashier notified.`, 'Bill Requested');
   }
 
   submitGuestOrder(): void {
@@ -196,6 +198,6 @@ export class QrOrderComponent implements OnInit {
     );
 
     this.guestCart = [];
-    alert(`Thank you! Your order has been placed directly with the kitchen KDS for Table ${this.currentTable.table_number}.`);
+    this.toast.success(`Thank you! Your order has been placed directly with the kitchen KDS for Table ${this.currentTable.table_number}.`, 'Order Placed');
   }
 }

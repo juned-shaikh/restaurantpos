@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
 import { UserRole } from '../models/auth.model';
 
 @Injectable({
@@ -9,7 +10,8 @@ import { UserRole } from '../models/auth.model';
 export class RoleGuard implements CanActivate {
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private toast: ToastService
   ) {}
 
   canActivate(
@@ -41,7 +43,7 @@ export class RoleGuard implements CanActivate {
 
     // 5. Access Denied (RBAC Block): Inform user & redirect to their authorized home
     const fallbackRoute = this.getDefaultRouteForRole(user.role);
-    alert(`⛔ RBAC Access Restricted!\nYour role is "${user.role}". You do not have permission to access "${state.url}".\nRedirecting you to your authorized station (${fallbackRoute}).`);
+    this.toast.error(`Your role is "${user.role}". You do not have permission to access "${state.url}". Redirected to your station.`, 'Access Restricted');
     
     return this.router.createUrlTree([fallbackRoute]);
   }

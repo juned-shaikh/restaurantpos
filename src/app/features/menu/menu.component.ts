@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { MenuService } from '../../core/services/menu.service';
+import { ToastService } from '../../core/services/toast.service';
 import { MenuCategory, MenuItem } from '../../core/models/menu.model';
 
 @Component({
@@ -53,12 +54,13 @@ export class MenuComponent implements OnInit {
 
   saveCategory(): void {
     if (!this.newCategoryName.trim()) {
-      alert('Please enter a category name.');
+      this.toast.warning('Please enter a category name.');
       return;
     }
     const cat = this.menuService.addCategory(this.newCategoryName.trim());
     this.selectedCategoryId = cat.id;
     this.showAddCategoryModal = false;
+    this.toast.success(`Category "${cat.name}" added successfully!`, 'Category Created');
   }
 
   // New Item Model
@@ -75,7 +77,10 @@ export class MenuComponent implements OnInit {
     tax_rate: 5.0
   };
 
-  constructor(public menuService: MenuService) {}
+  constructor(
+    public menuService: MenuService,
+    private toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.menuService.categories$.subscribe(cats => {
@@ -118,7 +123,7 @@ export class MenuComponent implements OnInit {
 
   saveItem(): void {
     if (!this.editingItem.name || !this.editingItem.price) {
-      alert('Please enter Item Name and Price');
+      this.toast.warning('Please enter Item Name and Price.');
       return;
     }
 
@@ -143,6 +148,7 @@ export class MenuComponent implements OnInit {
     });
 
     this.showItemModal = false;
+    this.toast.success(`Dish "${this.editingItem.name}" saved successfully!`, 'Menu Updated');
   }
 
   deleteItem(id: string): void {

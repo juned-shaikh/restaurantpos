@@ -7,6 +7,7 @@ import { TaxCalculatorService } from '../../core/services/tax-calculator.service
 import { PrintService } from '../../core/services/print.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { SecurityService } from '../../core/services/security.service';
+import { ToastService } from '../../core/services/toast.service';
 import { MenuItem, MenuCategory } from '../../core/models/menu.model';
 import { OrderItem, Order } from '../../core/models/order.model';
 import { Table } from '../../core/models/table.model';
@@ -132,7 +133,8 @@ export class OrdersComponent implements OnInit {
     public printService: PrintService,
     public tenantService: TenantService,
     public securityService: SecurityService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -437,7 +439,7 @@ export class OrdersComponent implements OnInit {
   // --- Print Bill Before Payment (Pre-Check / Proforma) ---
   printPreBill(): void {
     if (this.cartItems.length === 0) {
-      alert('Cart is empty!');
+      this.toast.warning('Cart is empty! Add items to generate pre-bill.');
       return;
     }
 
@@ -454,6 +456,7 @@ export class OrdersComponent implements OnInit {
 
     // Print Pre-Bill (Proforma)
     this.printService.printOrderReceipt(tempOrder, this.tenantService.activeBranch, true);
+    this.toast.info(`Pre-bill estimate printed for Table ${table?.table_number || 'Order'}!`, 'Running Bill Printed');
 
     // Mark table status as BILL_REQUESTED (never charges or frees table!)
     if (this.selectedTableId) {
@@ -463,7 +466,7 @@ export class OrdersComponent implements OnInit {
 
   sendToKitchen(): void {
     if (this.cartItems.length === 0) {
-      alert('Cart is empty!');
+      this.toast.warning('Cart is empty! Select dishes to send to kitchen.');
       return;
     }
 
@@ -473,7 +476,7 @@ export class OrdersComponent implements OnInit {
     // If table already has an active order running, ensure there are new unsent dishes
     if (this.activeOrderToSettle) {
       if (unsentItems.length === 0) {
-        alert(`All items on Table ${table?.table_number || ''} have already been sent to the kitchen! Please add a new dish to send a new KOT.`);
+        this.toast.info(`All items on Table ${table?.table_number || ''} have already been sent to kitchen. Add a new dish to dispatch another KOT.`, 'Kitchen Up to Date');
         return;
       }
     }
@@ -491,7 +494,7 @@ export class OrdersComponent implements OnInit {
       this.discountPct
     );
 
-    alert(`✅ KOT sent to Kitchen for ${itemsToSend.length} new dish(es) on Table ${table?.table_number || ''}! Previous dishes were NOT re-sent.`);
+    this.toast.success(`KOT dispatched to Kitchen for ${itemsToSend.length} new dish(es) on Table ${table?.table_number || ''}!`, 'KOT Sent');
     this.onTableSelect();
   }
 
@@ -514,7 +517,7 @@ export class OrdersComponent implements OnInit {
     } else {
       // 2. Only create a brand new order if there's no existing order
       if (this.cartItems.length === 0) {
-        alert('Cart is empty!');
+        this.toast.warning('Cart is empty! Add items to settle bill.');
         return;
       }
       const table = this.tables.find(t => t.id === this.selectedTableId);
@@ -561,7 +564,7 @@ export class OrdersComponent implements OnInit {
     if (!this.activeOrderToSettle) return;
 
     if (this.paymentMode === 'SPLIT' && this.remainingBalance > 0) {
-      alert(`Cannot close bill. Remaining balance of ₹${this.remainingBalance} is unpaid.`);
+      this.toast.error(`Cannot close bill. Remaining balance of ₹${this.remainingBalance} is unpaid.`, 'Balance Unpaid');
       return;
     }
 
@@ -583,7 +586,7 @@ export class OrdersComponent implements OnInit {
     this.activeOrderToSettle = null;
     this.splitPayments = [];
     this.clearCart();
-    alert(`✅ Payment of ₹${amount} received successfully for Table ${tableNo} (${effectiveMode})! Tax invoice printed & table marked Available.`);
+    this.toast.success(`Payment of ₹${amount} received via ${effectiveMode} for Table ${tableNo}! Tax invoice printed.`, 'Order Settled');
   }
 
   confirmSettlementAndPrint(): void {

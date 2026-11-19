@@ -5,6 +5,7 @@ import { OrderService } from '../../core/services/order.service';
 import { PrintService } from '../../core/services/print.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { TaxCalculatorService } from '../../core/services/tax-calculator.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Table, TableShape, Floor, WaitlistEntry, Reservation } from '../../core/models/table.model';
 import { Order } from '../../core/models/order.model';
 
@@ -64,7 +65,8 @@ export class TablesComponent implements OnInit {
     public printService: PrintService,
     public tenantService: TenantService,
     public taxCalculator: TaxCalculatorService,
-    private router: Router
+    private router: Router,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -123,7 +125,7 @@ export class TablesComponent implements OnInit {
   openQuickSettle(table: Table): void {
     const order = this.getTableOrder(table);
     if (!order) {
-      alert(`No running order found for Table ${table.table_number}.`);
+      this.toast.warning(`No running order found for Table ${table.table_number}.`);
       return;
     }
     this.tableSettlingOrder = order;
@@ -150,7 +152,7 @@ export class TablesComponent implements OnInit {
     this.orderService.settleOrder(order.id, mode, order.total_amount);
     this.printService.printOrderReceipt(order, this.tenantService.activeBranch, false);
 
-    alert(`✅ Payment of ₹${order.total_amount} settled via ${mode} for Table ${this.selectedTable.table_number}! Table is now available & clean.`);
+    this.toast.success(`Payment of ₹${order.total_amount} settled via ${mode} for Table ${this.selectedTable.table_number}! Table is now available.`, 'Table Settled');
     this.showTableSettleModal = false;
     this.selectedTable = null;
     this.tableSettlingOrder = null;
@@ -179,11 +181,11 @@ export class TablesComponent implements OnInit {
     });
 
     if (success) {
-      alert(`Successfully transferred from ${this.selectedTable.table_number} to target table!`);
+      this.toast.success(`Successfully transferred from ${this.selectedTable.table_number} to target table!`, 'Table Transferred');
       this.showTransferModal = false;
       this.transferTargetTableId = '';
     } else {
-      alert('Could not transfer table. Target table might not be available.');
+      this.toast.error('Could not transfer table. Target table might not be available.', 'Transfer Failed');
     }
   }
 
@@ -217,7 +219,7 @@ export class TablesComponent implements OnInit {
     if (avail.length > 0) {
       this.seatGuest(waitlistId, avail[0].id);
     } else {
-      alert('No available tables at the moment. Please free up a table first.');
+      this.toast.warning('No available tables at the moment. Please free up a table first.', 'Tables Full');
     }
   }
 
@@ -269,7 +271,7 @@ export class TablesComponent implements OnInit {
 
   saveSingleTable(): void {
     if (!this.newTableNumber.trim()) {
-      alert('Please enter a valid table number.');
+      this.toast.warning('Please enter a valid table number.');
       return;
     }
     this.tableService.addTable({
@@ -279,6 +281,7 @@ export class TablesComponent implements OnInit {
       shape: this.newTableShape
     });
     this.showAddTableModal = false;
+    this.toast.success(`Table ${this.newTableNumber.trim()} added successfully!`, 'Table Created');
   }
 
   // --- Bulk Setup (1 to 40+ Tables Generator) ---
@@ -294,7 +297,7 @@ export class TablesComponent implements OnInit {
 
   executeBulkCreation(): void {
     if (this.bulkCount < 1 || this.bulkCount > 60) {
-      alert('Please enter a valid count between 1 and 60 tables.');
+      this.toast.warning('Please enter a count between 1 and 60 tables.');
       return;
     }
     this.tableService.bulkCreateTables({
@@ -306,18 +309,19 @@ export class TablesComponent implements OnInit {
       floorId: this.bulkFloorId
     });
     this.showBulkModal = false;
-    alert(`Successfully generated ${this.bulkCount} tables for ${this.floors.find(f => f.id === this.bulkFloorId)?.name || 'floor'}!`);
+    this.toast.success(`Successfully generated ${this.bulkCount} tables for ${this.floors.find(f => f.id === this.bulkFloorId)?.name || 'floor'}!`, 'Tables Generated');
   }
 
   // --- Delete Table ---
   deleteTable(table: Table): void {
     if (table.status === 'OCCUPIED' || table.status === 'BILL_REQUESTED') {
-      alert(`Cannot delete Table ${table.table_number} because it has an active running order! Please settle or free the table first.`);
+      this.toast.error(`Cannot delete Table ${table.table_number} because it has an active running order! Please settle or free the table first.`, 'Table In Use');
       return;
     }
     if (confirm(`Are you sure you want to delete Table ${table.table_number}?`)) {
       this.tableService.deleteTable(table.id);
       this.selectedTable = null;
+      this.toast.info(`Table ${table.table_number} deleted.`, 'Table Removed');
     }
   }
 
@@ -329,12 +333,13 @@ export class TablesComponent implements OnInit {
 
   saveNewFloor(): void {
     if (!this.newFloorName.trim()) {
-      alert('Please enter a floor / section name (e.g. Terrace, Family AC Hall).');
+      this.toast.warning('Please enter a floor / section name (e.g. Terrace, Family AC Hall).');
       return;
     }
     const newFloor = this.tableService.addFloor(this.newFloorName.trim());
     this.selectedFloorId = newFloor.id;
     this.showAddFloorModal = false;
+    this.toast.success(`Floor area "${newFloor.name}" created!`, 'Area Created');
   }
 }
 

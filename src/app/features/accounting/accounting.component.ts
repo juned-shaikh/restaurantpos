@@ -4,6 +4,7 @@ import { FinanceService } from '../../core/services/finance.service';
 import { OrderService } from '../../core/services/order.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ToastService } from '../../core/services/toast.service';
 import { CashClosing, Expense, MonthlyBudget, ProfitAndLossSummary, TaxReportSummary } from '../../core/models/finance.model';
 import { Order } from '../../core/models/order.model';
 import { InventoryItem } from '../../core/models/inventory.model';
@@ -92,7 +93,8 @@ export class AccountingComponent implements OnInit, OnDestroy {
     public financeService: FinanceService,
     public orderService: OrderService,
     public inventoryService: InventoryService,
-    public tenantService: TenantService
+    public tenantService: TenantService,
+    private toast: ToastService
   ) {}
 
   get isDemoCafe(): boolean {
@@ -638,14 +640,14 @@ export class AccountingComponent implements OnInit, OnDestroy {
     );
 
     const sign = closing.variance_amount >= 0 ? '+' : '';
-    alert(`✅ Day-End Cash Close recorded successfully!\n• Expected: ₹${closing.expected_drawer_cash}\n• Counted: ₹${closing.actual_counted_cash}\n• Variance: ${sign}₹${closing.variance_amount}`);
+    this.toast.success(`Day-End Cash Close recorded! Counted: ₹${closing.actual_counted_cash} | Variance: ${sign}₹${closing.variance_amount}`, 'Cash Close Saved');
     this.cashCloseNotes = '';
   }
 
   saveExpense(): void {
     const amt = Number(this.expAmount);
     if (isNaN(amt) || amt <= 0 || !this.expVendor.trim()) {
-      alert('Please enter a valid amount and vendor name.');
+      this.toast.warning('Please enter a valid amount and vendor name.');
       return;
     }
 
@@ -672,7 +674,7 @@ export class AccountingComponent implements OnInit, OnDestroy {
       const ing = this.selectedIngredient;
       const unitCost = this.calculatedUnitCost;
       this.inventoryService.restockIngredient(this.selectedIngredientId, this.restockQty, unitCost);
-      restockNote = `\n📦 Inventory Restocked: +${this.restockQty} ${ing?.uom || 'units'} added to ${ing?.name}!`;
+      restockNote = ` • Restocked +${this.restockQty} ${ing?.uom || 'units'} (${ing?.name})`;
     }
 
     this.showExpenseModal = false;
@@ -683,7 +685,7 @@ export class AccountingComponent implements OnInit, OnDestroy {
     this.linkInventoryStock = false;
     this.restockQty = 0;
     this.recalculateStatements();
-    alert(`✅ Operational expense of ₹${amt} logged successfully in ${this.expCategory}!${restockNote}`);
+    this.toast.success(`Expense of ₹${amt} logged in ${this.expCategory}!${restockNote}`, 'Expense Logged');
   }
 
   openOverheadsModal(): void {
@@ -700,7 +702,7 @@ export class AccountingComponent implements OnInit, OnDestroy {
     const payroll = Number(this.payrollInput);
 
     if (isNaN(rent) || rent < 0 || isNaN(util) || util < 0 || isNaN(payroll) || payroll < 0) {
-      alert('Please enter valid non-negative amounts for monthly overheads.');
+      this.toast.warning('Please enter valid non-negative amounts for monthly overheads.');
       return;
     }
 
@@ -712,6 +714,6 @@ export class AccountingComponent implements OnInit, OnDestroy {
 
     this.showOverheadsModal = false;
     this.recalculateStatements();
-    alert(`✅ Store Monthly Overheads updated successfully!\n• Rent: ₹${rent.toLocaleString('en-IN')}/mo (₹${Math.round(rent/30).toLocaleString('en-IN')}/day)\n• Utilities: ₹${util.toLocaleString('en-IN')}/mo (₹${Math.round(util/30).toLocaleString('en-IN')}/day)\n• Staff Payroll: ₹${payroll.toLocaleString('en-IN')}/mo (₹${Math.round(payroll/30).toLocaleString('en-IN')}/day)\n\nAll P&L statements have been recalculated.`);
+    this.toast.success(`Store Monthly Overheads updated successfully! Rent: ₹${rent.toLocaleString('en-IN')}, Utilities: ₹${util.toLocaleString('en-IN')}, Payroll: ₹${payroll.toLocaleString('en-IN')}`, 'Overheads Updated');
   }
 }

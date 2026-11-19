@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { KdsService } from '../../core/services/kds.service';
 import { KotTicket, KitchenStation, KdsPerformanceMetric } from '../../core/models/kds.model';
 import { PrintService } from '../../core/services/print.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-kds',
@@ -31,7 +32,8 @@ export class KdsComponent implements OnInit, OnDestroy {
 
   constructor(
     public kdsService: KdsService,
-    public printService: PrintService
+    public printService: PrintService,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -119,7 +121,7 @@ export class KdsComponent implements OnInit, OnDestroy {
     // If food already being cooked, manager confirmation is required
     if (this.ticketToReject.status === 'PREPARING') {
       if (this.managerPin !== '1234') {
-        alert('Food is already being cooked! Valid Manager PIN (default: 1234) is required to reject.');
+        this.toast.error('Food is already being cooked! Valid Manager PIN (default: 1234) is required to reject.', 'Manager Auth Required');
         return;
       }
     }
@@ -131,7 +133,7 @@ export class KdsComponent implements OnInit, OnDestroy {
       rejectedAt: new Date().toLocaleTimeString()
     };
 
-    alert(`Ticket #${this.ticketToReject.kot_number} rejected.\nReason: ${rejectionLog.reason}\nLogged at: ${rejectionLog.rejectedAt}`);
+    this.toast.info(`Ticket #${this.ticketToReject.kot_number} rejected (${rejectionLog.reason}).`, 'KOT Rejected');
 
     // Remove from active queue
     this.kdsService.bumpTicket(this.ticketToReject.id);

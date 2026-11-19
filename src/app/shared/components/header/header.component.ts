@@ -7,6 +7,7 @@ import { StaffService } from '../../../core/services/staff.service';
 import { SupabaseService } from '../../../core/services/supabase.service';
 import { UiService } from '../../../core/services/ui.service';
 import { OfflineSyncService } from '../../../core/services/offline-sync.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Branch, Organization } from '../../../core/models/tenant.model';
 import { AppUser } from '../../../core/models/auth.model';
 import { GuestRequest } from '../../../core/models/order.model';
@@ -36,15 +37,16 @@ export class HeaderComponent implements OnInit {
     public supabaseService: SupabaseService,
     public uiService: UiService,
     public offlineSync: OfflineSyncService,
-    public router: Router
+    public router: Router,
+    private toast: ToastService
   ) {}
 
   async syncOfflineOrders(): Promise<void> {
     const synced = await this.offlineSync.autoSync();
     if (synced > 0) {
-      alert(`Synced ${synced} offline orders to cloud successfully!`);
+      this.toast.success(`Synced ${synced} offline orders to cloud successfully!`, 'Cloud Synced');
     } else {
-      alert('Local offline order queue is clean.');
+      this.toast.info('Local offline order queue is clean.', 'Queue Up to Date');
     }
   }
 
@@ -85,7 +87,7 @@ export class HeaderComponent implements OnInit {
     if (!this.currentUser) return;
     this.staffService.clockInStaff(this.currentUser.id);
     this.showClockInModal = false;
-    alert(`Successfully clocked in as ${this.currentUser.full_name} at ${new Date().toLocaleTimeString()}!`);
+    this.toast.success(`Clocked in as ${this.currentUser.full_name}!`, 'Clock-in Confirmed');
   }
 
   toggleUserDropdown(): void {
@@ -102,12 +104,13 @@ export class HeaderComponent implements OnInit {
     else if (role === 'STORE_KEEPER') target = '/inventory';
     else if (role === 'ACCOUNTANT') target = '/accounting';
     this.router.navigate([target]);
+    this.toast.info(`Switched role to ${role} (${name})`, 'Role Changed');
   }
 
   switchCafe(cafeId: string): void {
     this.tenantService.switchTenant(cafeId);
     this.showUserDropdown = false;
-    alert(`Switched active cafe tenant to: ${this.tenantService.currentOrg.name}`);
+    this.toast.success(`Switched active cafe tenant to: ${this.tenantService.currentOrg.name}`, 'Tenant Switched');
   }
 
   logout(): void {

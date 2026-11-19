@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { StaffService } from '../../core/services/staff.service';
+import { ToastService } from '../../core/services/toast.service';
 import { AppUser } from '../../core/models/auth.model';
 import { AttendanceRecord, Shift, StaffMonthlyPayroll } from '../../core/models/staff.model';
 
@@ -85,7 +86,10 @@ export class StaffComponent implements OnInit {
     return this.filteredPayroll.filter(p => p.status === 'PAID').length;
   }
 
-  constructor(public staffService: StaffService) {}
+  constructor(
+    public staffService: StaffService,
+    private toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.staffService.staffMembers$.subscribe(s => {
@@ -111,7 +115,7 @@ export class StaffComponent implements OnInit {
 
   saveNewStaff(): void {
     if (!this.newStaffName.trim() || !this.newStaffPhone.trim()) {
-      alert('Please fill in Staff Name and Phone Number');
+      this.toast.warning('Please fill in Staff Name and Phone Number.');
       return;
     }
 
@@ -128,23 +132,23 @@ export class StaffComponent implements OnInit {
     });
 
     this.showAddStaffModal = false;
-    alert(`✅ Staff member ${this.newStaffName} (${this.newStaffRole}) enrolled successfully!\n• Base Salary: ₹${this.newStaffMonthlySalary}/month\n• Attendance PIN: ${pin}\nSaved to local storage, payroll added, and synced to Supabase.`);
+    this.toast.success(`Staff member ${this.newStaffName} (${this.newStaffRole}) enrolled! PIN: ${pin}`, 'Staff Enrolled');
   }
 
   submitClockIn(): void {
     if (!this.selectedStaffForClockIn) {
-      alert('Please select a staff member');
+      this.toast.warning('Please select a staff member.');
       return;
     }
 
     if (!this.attendancePin) {
-      alert('Please enter your 4-digit PIN to clock in.');
+      this.toast.warning('Please enter your 4-digit PIN to clock in.');
       return;
     }
 
     const isValid = this.staffService.verifyPin(this.selectedStaffForClockIn, this.attendancePin);
     if (!isValid) {
-      alert('❌ Invalid PIN! Please enter your registered 4-digit PIN (Default demo PIN is 1234).');
+      this.toast.error('Invalid PIN! Please enter your registered 4-digit PIN (Demo: 1234).', 'Authentication Failed');
       return;
     }
 
@@ -152,12 +156,12 @@ export class StaffComponent implements OnInit {
     this.staffService.clockInStaff(this.selectedStaffForClockIn);
     this.showClockInModal = false;
     this.attendancePin = '';
-    alert(`✅ Clock-in Confirmed! ${staff?.full_name} (${staff?.role}) clocked in at ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}.`);
+    this.toast.success(`Clock-in Confirmed! ${staff?.full_name} (${staff?.role}) clocked in.`, 'Clock In Confirmed');
   }
 
   clockOut(recordId: string): void {
     this.staffService.clockOutStaff(recordId);
-    alert('Staff successfully clocked out! Hours logged.');
+    this.toast.info('Staff successfully clocked out! Hours logged.', 'Clock Out');
   }
 
   // Payroll Methods

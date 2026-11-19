@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { InventoryService } from '../../core/services/inventory.service';
 import { ProcurementService } from '../../core/services/procurement.service';
+import { ToastService } from '../../core/services/toast.service';
 import { InventoryItem, Recipe, WasteLog, UnitOfMeasure } from '../../core/models/inventory.model';
 import { Supplier, PurchaseOrder } from '../../core/models/procurement.model';
 
@@ -77,7 +78,8 @@ export class InventoryComponent implements OnInit {
 
   constructor(
     public inventoryService: InventoryService,
-    public procurementService: ProcurementService
+    public procurementService: ProcurementService,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -115,7 +117,7 @@ export class InventoryComponent implements OnInit {
   submitWasteLog(): void {
     const item = this.ingredients.find(i => i.id === this.selectedItemId);
     if (!item || this.wasteQty <= 0) {
-      alert('Please select valid item and wasted quantity.');
+      this.toast.warning('Please select valid item and wasted quantity.');
       return;
     }
 
@@ -131,12 +133,12 @@ export class InventoryComponent implements OnInit {
     });
 
     this.showWasteModal = false;
-    alert(`Waste of ${this.wasteQty} ${item.uom} logged successfully! Stock deducted.`);
+    this.toast.success(`Waste of ${this.wasteQty} ${item.uom} logged successfully! Stock deducted.`, 'Waste Recorded');
   }
 
   saveIngredient(): void {
     if (!this.newIngName.trim()) {
-      alert('Please enter an ingredient name.');
+      this.toast.warning('Please enter an ingredient name.');
       return;
     }
     this.inventoryService.addIngredient({
@@ -147,6 +149,7 @@ export class InventoryComponent implements OnInit {
       avg_unit_cost: Number(this.newIngCost) || 0
     });
     this.showAddIngredientModal = false;
+    this.toast.success(`Ingredient "${this.newIngName.trim()}" added to inventory!`, 'Item Added');
     this.newIngName = '';
     this.newIngStock = 10;
     this.newIngReorder = 5;
@@ -156,7 +159,7 @@ export class InventoryComponent implements OnInit {
   savePurchaseOrder(): void {
     const supplier = this.suppliers.find(s => s.id === this.selectedSupplierId) || this.suppliers[0];
     if (!supplier) {
-      alert('Please select a supplier.');
+      this.toast.warning('Please select a supplier.');
       return;
     }
     const qty = Number(this.poItemQty) || 1;

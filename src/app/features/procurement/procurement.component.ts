@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ProcurementService } from '../../core/services/procurement.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Supplier, PurchaseOrder, GoodsReceiptNote } from '../../core/models/procurement.model';
 
 @Component({
@@ -26,7 +27,10 @@ export class ProcurementComponent implements OnInit {
     }));
   }
 
-  constructor(public procurementService: ProcurementService) {}
+  constructor(
+    public procurementService: ProcurementService,
+    private toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.procurementService.suppliers$.subscribe(s => {
@@ -43,7 +47,7 @@ export class ProcurementComponent implements OnInit {
   createPo(): void {
     const sup = this.suppliers.find(s => s.id === this.selectedSupplierId);
     if (!sup || this.poAmount <= 0) {
-      alert('Please select supplier and enter valid amount');
+      this.toast.warning('Please select a supplier and enter a valid amount.');
       return;
     }
 
@@ -71,7 +75,7 @@ export class ProcurementComponent implements OnInit {
     this.showPoModal = false;
     this.poAmount = 0;
     this.poNotes = '';
-    alert('Purchase Order successfully created and marked as SENT to vendor!');
+    this.toast.success('Purchase Order created and marked as SENT to vendor!', 'PO Generated');
   }
 }
 

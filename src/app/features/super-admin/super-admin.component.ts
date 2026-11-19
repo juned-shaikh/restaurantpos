@@ -7,6 +7,7 @@ import { TenantService } from '../../core/services/tenant.service';
 import { AuthService } from '../../core/services/auth.service';
 import { MenuService } from '../../core/services/menu.service';
 import { TableService } from '../../core/services/table.service';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-super-admin',
@@ -67,7 +68,8 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     public menuService: MenuService,
     public tableService: TableService,
-    private router: Router
+    private router: Router,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -122,7 +124,7 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
 
   onboardNewCafe(): void {
     if (!this.newCafeName.trim() || !this.newOwnerName.trim() || !this.newPhone.trim()) {
-      alert('Please fill cafe name, owner name and phone number.');
+      this.toast.warning('Please fill cafe name, owner name and phone number.');
       return;
     }
 
@@ -220,10 +222,11 @@ _Please keep your credentials safe and bookmark the portal link._`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareMessage).then(() => {
         this.copiedNotice = true;
+        this.toast.success('Restaurant credentials copied to clipboard!', 'Credentials Copied');
         setTimeout(() => this.copiedNotice = false, 3500);
       });
     } else {
-      alert(`Credentials:\n\nEmail: ${c.email}\nPassword: ${c.password}\nPortal: ${c.loginUrl}`);
+      this.toast.info(`Email: ${c.email} | Password: ${c.password} | URL: ${c.loginUrl}`, 'Credentials');
     }
   }
 

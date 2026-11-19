@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { TenantService } from '../../core/services/tenant.service';
 import { SecurityService } from '../../core/services/security.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Organization, Branch, BranchFeatureFlags } from '../../core/models/tenant.model';
 import { SelectOption } from '../../shared/components/custom-select/custom-select.component';
 
@@ -44,7 +45,8 @@ export class AdminComponent implements OnInit {
 
   constructor(
     public tenantService: TenantService,
-    public securityService: SecurityService
+    public securityService: SecurityService,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -108,6 +110,6 @@ export class AdminComponent implements OnInit {
     });
     this.tenantService.updateFeatureFlags(this.featureFlags);
 
-    alert(`Settings saved! Manager PIN and active modules updated.`);
+    this.toast.success('Settings saved! Manager PIN & active modules updated.', 'Settings Saved');
   }
 }

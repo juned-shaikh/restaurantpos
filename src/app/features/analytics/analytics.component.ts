@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { AnalyticsService, TableBreakdown, KitchenBreakdown } from '../../core/services/analytics.service';
 import { OrderService } from '../../core/services/order.service';
+import { ToastService } from '../../core/services/toast.service';
 import { LiveDashboardKPIs, PeakHourSlot, ItemSalesVelocity, CustomerRetentionMetric } from '../../core/models/analytics.model';
 import { Order } from '../../core/models/order.model';
 
@@ -64,7 +65,8 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
 
   constructor(
     public analyticsService: AnalyticsService,
-    private orderService: OrderService
+    private orderService: OrderService,
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -176,7 +178,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
 
   exportPeakHoursCsv(): void {
     if (!this.peakHours || this.peakHours.length === 0) {
-      alert('No peak hours data to export.');
+      this.toast.warning('No peak hours data available to export.');
       return;
     }
     const headers = 'Time Slot,Orders Count,Sales Amount (INR),Traffic Intensity (%)\n';
@@ -191,11 +193,12 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    this.toast.success('Peak hours CSV exported successfully!', 'Report Downloaded');
   }
 
   exportVelocityCsv(): void {
     if (!this.salesVelocity || this.salesVelocity.length === 0) {
-      alert('No sales velocity data to export.');
+      this.toast.warning('No sales velocity data available to export.');
       return;
     }
     const headers = 'Rank,Dish Name,Category,Qty Sold,Revenue (INR),Cost Margin (%)\n';

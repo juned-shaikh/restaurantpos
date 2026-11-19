@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CrmService } from '../../core/services/crm.service';
+import { ToastService } from '../../core/services/toast.service';
 import { Customer, LoyaltyTransaction, GiftVoucher, CustomerFeedback } from '../../core/models/crm.model';
 
 @Component({
@@ -44,7 +45,10 @@ export class CrmComponent implements OnInit {
     this.createCustomer();
   }
 
-  constructor(public crmService: CrmService) {}
+  constructor(
+    public crmService: CrmService,
+    private toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.crmService.customers$.subscribe(c => this.customers = c);
@@ -55,7 +59,7 @@ export class CrmComponent implements OnInit {
 
   createCustomer(): void {
     if (!this.newName || !this.newPhone) {
-      alert('Name and Phone are mandatory');
+      this.toast.warning('Customer name and phone number are mandatory.');
       return;
     }
 
@@ -69,7 +73,7 @@ export class CrmComponent implements OnInit {
     this.newName = '';
     this.newPhone = '';
     this.newEmail = '';
-    alert('Customer enrolled with 50 Welcome Loyalty Points and unique Referral Code!');
+    this.toast.success('Customer enrolled with 50 Welcome Loyalty Points & referral code!', 'Customer Added');
   }
 
   getTierClass(tier: string): string {
