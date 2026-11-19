@@ -568,7 +568,31 @@ export class AccountingComponent implements OnInit, OnDestroy {
   }
 
   get todayTotalRevenue(): number {
-    return this.todayPosCashSales + this.todayUpiSales + this.todayCardSales;
+    return this.cashSales + this.todayUpiSales + this.todayCardSales;
+  }
+
+  get weeklyRevenue(): number {
+    return this.getCashSalesForPeriod('WEEKLY') + this.getUpiSalesForPeriod('WEEKLY') + this.getCardSalesForPeriod('WEEKLY');
+  }
+
+  get weeklyCashRevenue(): number {
+    return this.getCashSalesForPeriod('WEEKLY');
+  }
+
+  get monthlyRevenue(): number {
+    return this.getCashSalesForPeriod('MONTHLY') + this.getUpiSalesForPeriod('MONTHLY') + this.getCardSalesForPeriod('MONTHLY');
+  }
+
+  get monthlyCashRevenue(): number {
+    return this.getCashSalesForPeriod('MONTHLY');
+  }
+
+  get yearlyRevenue(): number {
+    return this.getCashSalesForPeriod('YEARLY') + this.getUpiSalesForPeriod('YEARLY') + this.getCardSalesForPeriod('YEARLY');
+  }
+
+  get yearlyCashRevenue(): number {
+    return this.getCashSalesForPeriod('YEARLY');
   }
 
   // --- Defensive Dynamic Computations (No String Concatenation) ---

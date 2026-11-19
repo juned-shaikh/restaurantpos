@@ -234,20 +234,20 @@
 
       <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #F8FAFC;">
         <span style="font-size: 12px; font-weight: 600; color: #64748B;">WEEKLY REVENUE (7 DAYS)</span>
-        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ (54200 + todayPosCashSales + 38100 + todayUpiSales + 6200 + todayCardSales) | number:'1.0-0' }}</div>
-        <div style="font-size: 11.5px; color: #64748B;">Weekly Cash Share: ₹{{ (54200 + todayPosCashSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ weeklyRevenue | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #64748B;">Weekly Cash Share: ₹{{ weeklyCashRevenue | number:'1.0-0' }}</div>
       </div>
 
       <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #F8FAFC;">
         <span style="font-size: 12px; font-weight: 600; color: #64748B;">MONTHLY REVENUE (MTD)</span>
-        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ (210400 + todayPosCashSales + 146300 + todayUpiSales + 27800 + todayCardSales) | number:'1.0-0' }}</div>
-        <div style="font-size: 11.5px; color: #64748B;">Monthly Cash Share: ₹{{ (210400 + todayPosCashSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 20px; font-weight: 800; color: #0F172A; margin: 4px 0;">₹{{ monthlyRevenue | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #64748B;">Monthly Cash Share: ₹{{ monthlyCashRevenue | number:'1.0-0' }}</div>
       </div>
 
       <div style="border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; background: #FFF1F2; border-color: #FECDD3;">
         <span style="font-size: 12px; font-weight: 600; color: #881337;">ANNUAL REVENUE (FY 2026 YTD)</span>
-        <div style="font-size: 20px; font-weight: 800; color: #881337; margin: 4px 0;">₹{{ (2350000 + todayPosCashSales + 1620000 + todayUpiSales + 310000 + todayCardSales) | number:'1.0-0' }}</div>
-        <div style="font-size: 11.5px; color: #9F1239;">Annual Cash: ₹{{ (2350000 + todayPosCashSales) | number:'1.0-0' }}</div>
+        <div style="font-size: 20px; font-weight: 800; color: #881337; margin: 4px 0;">₹{{ yearlyRevenue | number:'1.0-0' }}</div>
+        <div style="font-size: 11.5px; color: #9F1239;">Annual Cash: ₹{{ yearlyCashRevenue | number:'1.0-0' }}</div>
       </div>
     </div>
   </div>
