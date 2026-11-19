@@ -38,7 +38,6 @@ export class SidebarComponent implements OnInit {
     { label: 'Staff Management', route: '/staff', icon: 'ri-team-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER'], flag: 'enable_staff' },
     { label: 'Accounting & Cash', route: '/accounting', icon: 'ri-money-rupee-circle-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT', 'CASHIER'], flag: 'enable_accounting' },
     { label: 'Online QR Dine-in', route: '/qr-order', icon: 'ri-qr-code-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'WAITER', 'CASHIER'], flag: 'enable_qr' },
-    { label: 'Customer Screen', route: '/customer-display', icon: 'ri-tv-2-line', badge: '2ND', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'CASHIER'] },
     { label: 'Settings', route: '/admin', icon: 'ri-settings-4-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER'] }
   ];
 

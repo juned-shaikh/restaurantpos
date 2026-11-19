@@ -7,16 +7,16 @@
     </div>
 
     <div class="header-right-actions">
-      <!-- Tabs for Loyalty / Vouchers / Feedback -->
+      <!-- Tabs for Profiles / Loyalty / Feedback -->
       <div class="crm-tabs">
         <button class="filter-pill" [class.active]="activeTab === 'customers'" (click)="activeTab = 'customers'">
-          Profiles
+          Profiles ({{ customers.length }})
         </button>
         <button class="filter-pill" [class.active]="activeTab === 'loyalty'" (click)="activeTab = 'loyalty'">
           Points Ledger
         </button>
-        <button class="filter-pill" [class.active]="activeTab === 'vouchers'" (click)="activeTab = 'vouchers'">
-          Gift Vouchers
+        <button class="filter-pill" [class.active]="activeTab === 'feedback'" (click)="activeTab = 'feedback'">
+          Diner Feedback ({{ feedbackList.length }})
         </button>
       </div>
 
@@ -82,32 +82,38 @@
     </div>
   </div>
 
-  <!-- TAB 3: GIFT VOUCHERS -->
-  <div *ngIf="activeTab === 'vouchers'" class="card">
+  <!-- TAB 3: DINER FEEDBACK & RATINGS -->
+  <div *ngIf="activeTab === 'feedback'" class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h3>Gift Vouchers</h3>
-      <button class="btn btn-primary btn-sm" (click)="showVoucherModal = true">+ Issue Voucher</button>
+      <h3 style="margin: 0;"><i class="ri-feedback-line" style="color: #F59E0B;"></i> Live Diner Ratings & Reviews</h3>
+      <span style="font-size: 12px; color: #64748B;">Submitted via QR self-ordering table portal</span>
     </div>
-    <div class="data-table-container">
+
+    <div *ngIf="feedbackList.length === 0" style="text-align: center; padding: 36px 20px; color: #94A3B8;">
+      <i class="ri-chat-smile-2-line" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
+      <p style="font-size: 14px; margin: 0;">No diner reviews yet. Feedback submitted via table QR ordering will appear here in real time.</p>
+    </div>
+
+    <div *ngIf="feedbackList.length > 0" class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Voucher Code</th>
-            <th>Initial Value</th>
-            <th>Balance</th>
-            <th>Status</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Food</th>
+            <th>Service</th>
+            <th>Ambience</th>
+            <th>Comments</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let v of vouchers">
-            <td><strong>{{ v.code }}</strong></td>
-            <td>₹{{ v.initial_amount | number:'1.2-2' }}</td>
-            <td><strong style="color: #16A34A;">₹{{ v.balance_amount | number:'1.2-2' }}</strong></td>
-            <td>
-              <span class="badge" [class.badge-success]="v.is_active" [class.badge-danger]="!v.is_active">
-                {{ v.is_active ? 'ACTIVE' : 'EXPIRED' }}
-              </span>
-            </td>
+          <tr *ngFor="let fb of feedbackList">
+            <td>{{ fb.created_at | date:'d MMM y, HH:mm' }}</td>
+            <td><strong>{{ fb.customer_name || 'Anonymous Guest' }}</strong></td>
+            <td><span class="badge badge-success">⭐ {{ fb.food_rating }}/5</span></td>
+            <td><span class="badge badge-bill-requested">⭐ {{ fb.service_rating }}/5</span></td>
+            <td><span class="badge badge-occupied">⭐ {{ fb.ambience_rating }}/5</span></td>
+            <td><em>{{ fb.comments || 'No written remarks' }}</em></td>
           </tr>
         </tbody>
       </table>
