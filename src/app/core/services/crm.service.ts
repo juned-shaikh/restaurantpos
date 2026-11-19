@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Customer, LoyaltyTransaction, GiftVoucher, CustomerFeedback } from '../models/crm.model';
+import { Customer, LoyaltyTransaction, CustomerFeedback } from '../models/crm.model';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
 
@@ -18,12 +18,10 @@ export class CrmService {
 
   private customersSubject = new BehaviorSubject<Customer[]>([]);
   private loyaltyTxnsSubject = new BehaviorSubject<LoyaltyTransaction[]>([]);
-  private vouchersSubject = new BehaviorSubject<GiftVoucher[]>([]);
   private feedbackSubject = new BehaviorSubject<CustomerFeedback[]>([]);
 
   customers$: Observable<Customer[]> = this.customersSubject.asObservable();
   loyaltyTxns$: Observable<LoyaltyTransaction[]> = this.loyaltyTxnsSubject.asObservable();
-  vouchers$: Observable<GiftVoucher[]> = this.vouchersSubject.asObservable();
   feedbackList$: Observable<CustomerFeedback[]> = this.feedbackSubject.asObservable();
 
   private get STORAGE_KEY_CUSTOMERS(): string {

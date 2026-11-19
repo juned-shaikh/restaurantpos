@@ -4,7 +4,7 @@
 
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'QR_ORDER' | 'SCHEDULED';
 export type OrderStatus = 'OPEN' | 'IN_KITCHEN' | 'READY' | 'SERVED' | 'SETTLED' | 'CANCELLED';
-export type PaymentMode = 'CASH' | 'UPI' | 'CARD' | 'SPLIT' | 'LOYALTY_POINTS' | 'GIFT_VOUCHER';
+export type PaymentMode = 'CASH' | 'UPI' | 'CARD' | 'SPLIT' | 'LOYALTY_POINTS';
 
 export interface OrderItemModifier {
   id?: string;

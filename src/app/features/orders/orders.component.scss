@@ -347,24 +347,6 @@
     gap: 6px;
   }
 
-  .customer-display-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #475569;
-    border-color: #CBD5E1;
-    background: #FFFFFF;
-    border-radius: 6px;
-
-    &:hover {
-      background: #F8FAFC;
-      border-color: #94A3B8;
-      color: #0F172A;
-    }
-  }
 
   /* Segmented Mode Switcher: Dine-In, Takeaway, Delivery */
   .order-mode-tabs {

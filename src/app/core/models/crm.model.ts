@@ -1,5 +1,5 @@
 // ==============================================================================
-// CRM, LOYALTY, REFERRALS & VOUCHER MODELS
+// CRM, LOYALTY, REFERRALS & CUSTOMER MODELS
 // ==============================================================================
 
 export type MembershipTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
@@ -31,18 +31,6 @@ export interface LoyaltyTransaction {
   points: number; // Positive for earn, negative for redeem
   type: 'EARNED' | 'REDEEMED' | 'REFERRAL_BONUS' | 'EXPIRED' | 'MANUAL_ADJUST';
   description: string;
-  created_at: string;
-}
-
-export interface GiftVoucher {
-  id: string;
-  organization_id: string;
-  code: string;
-  initial_amount: number;
-  balance_amount: number;
-  customer_phone?: string;
-  expires_at: string;
-  is_active: boolean;
   created_at: string;
 }
 

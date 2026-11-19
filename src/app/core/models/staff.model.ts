@@ -29,40 +29,6 @@ export interface AttendanceRecord {
   created_at: string;
 }
 
-export interface TipPool {
-  id: string;
-  organization_id: string;
-  branch_id: string;
-  pool_date: string;
-  total_tips_collected: number;
-  is_distributed: boolean;
-  distributed_at?: string;
-  staff_splits?: {
-    user_id: string;
-    user_name: string;
-    hours_worked: number;
-    tip_share: number;
-  }[];
-}
-
-export interface PayrollRun {
-  id: string;
-  organization_id: string;
-  branch_id: string;
-  user_id: string;
-  user_name: string;
-  role: string;
-  period_start: string;
-  period_end: string;
-  clocked_hours: number;
-  hourly_rate: number;
-  base_pay: number;
-  tip_share: number;
-  deductions: number;
-  net_salary: number;
-  status: 'DRAFT' | 'APPROVED' | 'PAID';
-}
-
 export interface StaffMonthlyPayroll {
   id: string;
   user_id: string;

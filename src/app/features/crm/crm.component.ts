@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CrmService } from '../../core/services/crm.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Customer, LoyaltyTransaction, GiftVoucher, CustomerFeedback } from '../../core/models/crm.model';
+import { Customer, LoyaltyTransaction, CustomerFeedback } from '../../core/models/crm.model';
 
 @Component({
   selector: 'app-crm',
@@ -11,12 +11,10 @@ import { Customer, LoyaltyTransaction, GiftVoucher, CustomerFeedback } from '../
 export class CrmComponent implements OnInit {
   customers: Customer[] = [];
   loyaltyTxns: LoyaltyTransaction[] = [];
-  vouchers: GiftVoucher[] = [];
   feedbackList: CustomerFeedback[] = [];
-  activeTab: 'customers' | 'loyalty' | 'vouchers' | 'feedback' = 'customers';
+  activeTab: 'customers' | 'loyalty' | 'feedback' = 'customers';
 
   showCustomerModal = false;
-  showVoucherModal = false;
   searchQuery = '';
   newName = '';
   newPhone = '';
@@ -53,7 +51,6 @@ export class CrmComponent implements OnInit {
   ngOnInit(): void {
     this.crmService.customers$.subscribe(c => this.customers = c);
     this.crmService.loyaltyTxns$.subscribe(l => this.loyaltyTxns = l);
-    this.crmService.vouchers$.subscribe(v => this.vouchers = v);
     this.crmService.feedbackList$.subscribe(f => this.feedbackList = f);
   }
 

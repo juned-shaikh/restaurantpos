@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Shift, AttendanceRecord, TipPool, PayrollRun, StaffMonthlyPayroll } from '../models/staff.model';
+import { Shift, AttendanceRecord, StaffMonthlyPayroll } from '../models/staff.model';
 import { AppUser } from '../models/auth.model';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
@@ -28,14 +28,11 @@ export class StaffService {
 
   private staffMembersSubject = new BehaviorSubject<AppUser[]>([]);
   private attendanceSubject = new BehaviorSubject<AttendanceRecord[]>([]);
-
   private shiftsSubject = new BehaviorSubject<Shift[]>([]);
-  private tipPoolsSubject = new BehaviorSubject<TipPool[]>([]);
 
   staffMembers$: Observable<AppUser[]> = this.staffMembersSubject.asObservable();
   shifts$: Observable<Shift[]> = this.shiftsSubject.asObservable();
   attendanceLogs$: Observable<AttendanceRecord[]> = this.attendanceSubject.asObservable();
-  tipPools$: Observable<TipPool[]> = this.tipPoolsSubject.asObservable();
 
   private payrollSubject = new BehaviorSubject<StaffMonthlyPayroll[]>([]);
   payroll$: Observable<StaffMonthlyPayroll[]> = this.payrollSubject.asObservable();
@@ -388,37 +385,6 @@ export class StaffService {
         created_at: new Date().toISOString()
       }).then().catch();
     }
-  }
-
-  splitTipPool(poolDate: string, totalTips: number): TipPool {
-    // Proportional tip split based on active clocked hours today
-    const activeStaff = this.attendanceSubject.value.filter(a => a.clock_in.startsWith(poolDate) || true);
-    const totalHours = activeStaff.reduce((sum, a) => sum + (a.total_hours || 4), 0);
-
-    const splits = activeStaff.map(s => {
-      const hours = s.total_hours || 4;
-      const share = totalHours > 0 ? Math.round((hours / totalHours) * totalTips) : Math.round(totalTips / activeStaff.length);
-      return {
-        user_id: s.user_id,
-        user_name: s.user_name,
-        hours_worked: hours,
-        tip_share: share
-      };
-    });
-
-    const pool: TipPool = {
-      id: `tp-${Date.now()}`,
-      organization_id: 'org-cafe-01',
-      branch_id: 'branch-01',
-      pool_date: poolDate,
-      total_tips_collected: totalTips,
-      is_distributed: true,
-      distributed_at: new Date().toISOString(),
-      staff_splits: splits
-    };
-
-    this.tipPoolsSubject.next([pool, ...this.tipPoolsSubject.value]);
-    return pool;
   }
 
   getPayrollRecords(monthYear: string = '2026-11'): StaffMonthlyPayroll[] {

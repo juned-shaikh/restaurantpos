@@ -24,7 +24,6 @@ export class StaffComponent implements OnInit {
   newStaffName = '';
   newStaffRole: AppUser['role'] = 'WAITER';
   newStaffPhone = '';
-  newStaffHourlyRate = 150;
   newStaffMonthlySalary = 16000;
   newStaffPin = '';
 
@@ -107,7 +106,6 @@ export class StaffComponent implements OnInit {
     this.newStaffName = '';
     this.newStaffRole = 'WAITER';
     this.newStaffPhone = '';
-    this.newStaffHourlyRate = 150;
     this.newStaffMonthlySalary = 16000;
     this.newStaffPin = '';
     this.showAddStaffModal = true;
@@ -127,7 +125,7 @@ export class StaffComponent implements OnInit {
       phone: this.newStaffPhone.trim(),
       manager_pin: pin,
       pin: pin,
-      hourly_rate: Number(this.newStaffHourlyRate),
+      hourly_rate: 0,
       monthly_salary: Number(this.newStaffMonthlySalary) || 16000
     });
 

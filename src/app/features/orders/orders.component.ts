@@ -430,12 +430,6 @@ export class OrdersComponent implements OnInit {
     this.publishLiveTillState();
   }
 
-  // --- Customer Facing Second Screen ---
-  openCustomerDisplay(): void {
-    this.publishLiveTillState();
-    window.open('/customer-display', '_blank', 'width=1024,height=768,menubar=no,toolbar=no');
-  }
-
   // --- Print Bill Before Payment (Pre-Check / Proforma) ---
   printPreBill(): void {
     if (this.cartItems.length === 0) {
