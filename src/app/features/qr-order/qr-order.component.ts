@@ -5,6 +5,7 @@ import { OrderService } from '../../core/services/order.service';
 import { TableService } from '../../core/services/table.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { MenuItem, MenuCategory } from '../../core/models/menu.model';
 import { OrderItem } from '../../core/models/order.model';
 import { Table } from '../../core/models/table.model';
@@ -78,16 +79,23 @@ export class QrOrderComponent implements OnInit {
     { pincode: '400051', areaName: 'BKC Business Hub', minOrder: 600, deliveryFee: 40, estimatedMins: 40 }
   ];
 
+  isDirectScan: boolean = false;
+  orderPlacedSuccess: boolean = false;
+  showCartReviewDrawer: boolean = false;
+
   constructor(
     public menuService: MenuService,
     public orderService: OrderService,
     public tableService: TableService,
     public tenantService: TenantService,
+    public authService: AuthService,
     private route: ActivatedRoute,
     private toast: ToastService
   ) {}
 
   ngOnInit(): void {
+    this.isDirectScan = window.innerWidth <= 768 || !this.authService.isAuthenticated;
+
     this.route.queryParams.subscribe(params => {
       const orgId = params['orgId'] || params['org'];
       if (orgId) {
@@ -95,6 +103,7 @@ export class QrOrderComponent implements OnInit {
       }
       const tableParam = params['tableId'] || params['table'];
       if (tableParam) {
+        this.isDirectScan = true;
         this.selectedTableId = tableParam;
         if (this.tables.length > 0) {
           this.currentTable = this.tables.find(t => t.id === tableParam || t.table_number === tableParam) || this.tables[0];
@@ -150,6 +159,26 @@ export class QrOrderComponent implements OnInit {
         modifiers: []
       });
     }
+  }
+
+  getCartItemQty(dishId: string): number {
+    const item = this.guestCart.find(i => i.menu_item_id === dishId);
+    return item ? item.quantity : 0;
+  }
+
+  incrementDish(dish: MenuItem): void {
+    this.addToGuestCart(dish);
+  }
+
+  decrementDish(dishId: string): void {
+    const item = this.guestCart.find(i => i.menu_item_id === dishId);
+    if (item) {
+      this.updateQty(item, -1);
+    }
+  }
+
+  get totalGuestItemCount(): number {
+    return this.guestCart.reduce((sum, item) => sum + item.quantity, 0);
   }
 
   updateQty(item: OrderItem, delta: number): void {
@@ -221,7 +250,9 @@ export class QrOrderComponent implements OnInit {
 
       this.lastOrderTimestamp = Date.now();
       this.guestCart = [];
-      this.toast.success(`Thank you! Your order has been placed directly with the kitchen KDS for Table ${this.currentTable.table_number}.`, 'Order Placed');
+      this.showCartReviewDrawer = false;
+      this.orderPlacedSuccess = true;
+      this.toast.success(`Thank you! Your order has been placed directly with the kitchen for Table ${this.currentTable.table_number}.`, 'Order Placed');
     } finally {
       this.isSubmitting = false;
     }

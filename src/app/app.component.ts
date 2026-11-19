@@ -26,12 +26,16 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     this.realtimeSync.initRealtimeListeners();
 
-    this.isAuthPage = window.location.pathname.includes('/login');
+    const isStandaloneRoute = (url: string) => {
+      return url.includes('/login') || url.includes('/qr-order') || url.includes('/customer-display');
+    };
+
+    this.isAuthPage = isStandaloneRoute(window.location.pathname);
 
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
-      this.isAuthPage = event.urlAfterRedirects.includes('/login') || event.url.includes('/login');
+      this.isAuthPage = isStandaloneRoute(event.urlAfterRedirects || event.url);
     });
 
     this.securityService.activeApprovalRequest$.subscribe(req => {
