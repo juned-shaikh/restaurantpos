@@ -1,5 +1,5 @@
 <div class="login-wrapper">
-  <!-- Centered Responsive Container -->
+  <!-- Centered Professional Container -->
   <div class="login-container">
     
     <!-- Top Branding Block -->
@@ -13,44 +13,55 @@
       </div>
     </div>
 
+    <!-- Error Banner -->
+    <div *ngIf="errorMessage" class="error-banner">
+      <i class="ri-error-warning-fill" style="margin-right: 6px; font-size: 16px;"></i>
+      <span>{{ errorMessage }}</span>
+    </div>
+
     <!-- Clean Email & Password Login Pane -->
     <div class="login-form-pane">
-      <div *ngIf="errorMessage" class="error-banner">
-        <i class="ri-alert-line" style="margin-right: 6px;"></i> {{ errorMessage }}
-      </div>
-
       <div class="form-group">
         <label class="form-label">Registered Email or Mobile Number</label>
         <div class="input-with-icon">
-          <i class="ri-mail-line field-icon"></i>
+          <i class="ri-user-line field-icon"></i>
           <input
-            type="email"
+            type="text"
             [(ngModel)]="email"
-            placeholder="e.g. name@restaurant.com or mobile"
+            (input)="onInputChange()"
+            (keyup.enter)="onEmailEnter(pwdField)"
+            [disabled]="isLoading"
+            placeholder="e.g. name@restaurant.com or 10-digit mobile"
             class="form-control"
-            (keyup.enter)="submitPasswordLogin()"
+            autocomplete="username"
             autofocus
           >
         </div>
       </div>
 
       <div class="form-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <label class="form-label" style="margin-bottom: 0;">Password</label>
         </div>
         <div class="input-with-icon">
           <i class="ri-lock-line field-icon"></i>
           <input
+            #pwdField
             [type]="showPassword ? 'text' : 'password'"
             [(ngModel)]="password"
+            (input)="onInputChange()"
+            (keyup.enter)="submitPasswordLogin()"
+            [disabled]="isLoading"
             placeholder="Enter security password"
             class="form-control"
-            (keyup.enter)="submitPasswordLogin()"
+            autocomplete="current-password"
           >
           <button
             type="button"
             class="toggle-pwd-btn"
             (click)="showPassword = !showPassword"
+            [disabled]="isLoading"
+            tabindex="-1"
             title="Toggle visibility"
           >
             <i [class]="showPassword ? 'ri-eye-off-line' : 'ri-eye-line'"></i>
@@ -60,7 +71,7 @@
 
       <div class="remember-row">
         <label class="remember-label">
-          <input type="checkbox" [(ngModel)]="rememberMe">
+          <input type="checkbox" [(ngModel)]="rememberMe" [disabled]="isLoading">
           <span>Remember this POS terminal</span>
         </label>
       </div>
@@ -70,16 +81,20 @@
         [disabled]="isLoading"
         (click)="submitPasswordLogin()"
       >
-        <span *ngIf="!isLoading">Sign In <i class="ri-arrow-right-line" style="margin-left: 6px;"></i></span>
-        <span *ngIf="isLoading">Verifying & Signing In...</span>
+        <span *ngIf="!isLoading" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          Sign In to POS Till <i class="ri-arrow-right-line"></i>
+        </span>
+        <span *ngIf="isLoading" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="ri-loader-4-line spin-icon"></i> Authenticating...
+        </span>
       </button>
     </div>
 
     <!-- Footer Copyright -->
     <div class="login-footer">
       <span>CloudPOS Hospitality v2.4</span>
-      <span>•</span>
-      <span>Secure Cloud POS System</span>
+      <span class="dot-sep">•</span>
+      <span>Encrypted Enterprise Till</span>
     </div>
 
   </div>

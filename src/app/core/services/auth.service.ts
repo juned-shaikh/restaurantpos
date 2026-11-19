@@ -144,26 +144,28 @@ export class AuthService {
    * Real Supabase & Cloud Verified Login with Email and Hashed Password
    */
   async loginWithCredentials(
-    emailInput: string,
+    identifierInput: string,
     passwordInput: string
   ): Promise<{ success: boolean; message?: string; role?: UserRole; route?: string }> {
-    const email = emailInput.trim().toLowerCase();
+    const rawInput = identifierInput.trim();
+    const identifier = rawInput.toLowerCase();
+    const cleanPhone = rawInput.replace(/[\s\-\(\)\+]/g, '');
     const pwd = passwordInput.trim();
 
-    if (!email || !pwd) {
-      return { success: false, message: 'Please enter both email and password.' };
+    if (!identifier || !pwd) {
+      return { success: false, message: 'Please enter both email or mobile number and password.' };
     }
 
     const hashedInput = await this.hashPassword(pwd);
 
-    // 1. Authenticate against Supabase Cloud database
+    // 1. Authenticate against Supabase Cloud database (Email or Phone)
     const client = this.supabaseService.client;
     if (client) {
       try {
         const { data, error } = await this.supabaseService
           .from('app_users')
           .select('*')
-          .eq('email', email)
+          .or(`email.eq.${identifier},phone.eq.${rawInput},phone.eq.${cleanPhone}`)
           .limit(1);
 
         if (!error && data && data.length > 0) {
@@ -217,7 +219,11 @@ export class AuthService {
       const savedUsersJson = localStorage.getItem(this.REGISTERED_USERS_KEY) || localStorage.getItem('orderrestro_registered_users_v2');
       if (savedUsersJson) {
         const usersList: { user: AppUser; passwordHash?: string; passwordPlain?: string }[] = JSON.parse(savedUsersJson);
-        const match = usersList.find(u => u.user.email?.toLowerCase() === email);
+        const match = usersList.find(u => {
+          const userEmail = u.user.email?.toLowerCase();
+          const userPhone = u.user.phone?.replace(/[\s\-\(\)\+]/g, '');
+          return userEmail === identifier || (cleanPhone.length >= 8 && userPhone && userPhone.includes(cleanPhone));
+        });
         if (match) {
           const isMatch = (match.passwordHash === hashedInput) || (match.passwordPlain === pwd);
           if (!isMatch) {
@@ -235,12 +241,12 @@ export class AuthService {
     } catch (e) {}
 
     // 3. Initial Super Admin Provisioning for Default System Owner
-    if (email === 'owner@restaurantpos.com') {
+    if (identifier === 'owner@restaurantpos.com' || cleanPhone === '9876543210') {
       const expectedOwnerHash = await this.hashPassword('Owner@123');
       if (hashedInput === expectedOwnerHash || pwd === 'Owner@123') {
         const ownerUser: AppUser = {
           ...this.defaultSuperAdmin,
-          email,
+          email: 'owner@restaurantpos.com',
           last_login_at: new Date().toISOString()
         };
         this.setSessionUser(ownerUser);
