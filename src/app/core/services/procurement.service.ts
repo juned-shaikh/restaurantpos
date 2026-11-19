@@ -147,7 +147,7 @@ export class ProcurementService {
   }
 
   createPurchaseOrder(po: Omit<PurchaseOrder, 'id' | 'created_at' | 'organization_id' | 'branch_id'>): void {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const newPo: PurchaseOrder = {

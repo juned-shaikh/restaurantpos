@@ -21,7 +21,7 @@ export class AuthService {
   // Default Super Admin / Product Owner Master Account
   private readonly defaultSuperAdmin: AppUser = {
     id: 'usr-super-owner-01',
-    organization_id: 'org-cafe-01',
+    organization_id: 'org-default',
     branch_id: 'branch-01',
     full_name: 'Juned Khan (Product Owner & Super Admin)',
     email: 'owner@restaurantpos.com',
@@ -187,7 +187,7 @@ export class AuthService {
 
           const user: AppUser = {
             id: dbUser.id,
-            organization_id: dbUser.organization_id || 'org-cafe-01',
+            organization_id: dbUser.organization_id || 'org-default',
             branch_id: dbUser.branch_id || 'branch-01',
             full_name: dbUser.full_name || 'Owner & Admin',
             email: dbUser.email,
@@ -269,7 +269,7 @@ export class AuthService {
 
     const user: AppUser = {
       id: `staff-${Date.now()}`,
-      organization_id: 'org-cafe-01',
+      organization_id: localStorage.getItem('orderrestro_active_org_id_v2') || 'org-default',
       branch_id: 'branch-01',
       full_name: staffName,
       role: role,

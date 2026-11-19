@@ -27,7 +27,7 @@ export class FinanceService {
   }
 
   get currentOrgId(): string {
-    return this.tenantService?.currentOrg?.id || 'org-cafe-01';
+    return this.tenantService?.currentOrg?.id || 'org-default';
   }
 
   get currentBranchId(): string {
@@ -229,7 +229,7 @@ export class FinanceService {
   }
 
   private async seedInitialExpenses(): Promise<void> {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     for (const exp of this.defaultExpenses) {
       try {
         await this.supabaseService.from('expenses').insert({
@@ -241,7 +241,7 @@ export class FinanceService {
   }
 
   private async seedInitialCashClosings(): Promise<void> {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     for (const cc of this.defaultCashClosings) {
       try {
         await this.supabaseService.from('cash_closings').insert({
@@ -368,7 +368,7 @@ export class FinanceService {
     const expected = Math.round((opening + sales - petty - refunds) * 100) / 100;
     const variance = Math.round((actual - expected) * 100) / 100;
 
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const closing: CashClosing = {
@@ -435,7 +435,7 @@ export class FinanceService {
    * Log Operational Expense: Updates memory, saves to localStorage, and saves to Supabase Cloud
    */
   addExpense(expense: Omit<Expense, 'id' | 'organization_id' | 'branch_id'>): void {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const newExp: Expense = {

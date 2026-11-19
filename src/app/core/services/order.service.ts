@@ -53,7 +53,7 @@ export class OrderService {
   }
 
   private initInitialOrders(): void {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     try {
       const saved = localStorage.getItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`);
       if (saved) {
@@ -69,7 +69,7 @@ export class OrderService {
   }
 
   private persistOrdersLocally(): void {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     try {
       localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(this.activeOrders));
     } catch (e) {}
@@ -108,7 +108,7 @@ export class OrderService {
         return;
       }
 
-      const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+      const orgId = this.tenantService.currentOrg?.id || 'org-default';
       await this.loadOrdersForOrg(orgId);
 
       // Realtime listener for cross-terminal order sync
@@ -116,7 +116,7 @@ export class OrderService {
         const item = payload.new as Order;
         if (!item) return;
 
-        const currentOrgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+        const currentOrgId = this.tenantService.currentOrg?.id || 'org-default';
         if (item.organization_id && item.organization_id !== currentOrgId) {
           return; // Ignore orders belonging to other cafes
         }
@@ -349,7 +349,7 @@ export class OrderService {
     const orderNumber = `${100 + this.activeOrders.length + 1}`;
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
-      organization_id: 'org-cafe-01',
+      organization_id: this.tenantService.currentOrg?.id || 'org-default',
       branch_id: 'branch-01',
       order_number: orderNumber,
       order_type: orderType,
@@ -563,7 +563,7 @@ export class OrderService {
   submitGuestRequest(tableId: string, tableNumber: string, requestType: GuestRequest['request_type'], notes?: string): void {
     const req: GuestRequest = {
       id: `gr-${Date.now()}`,
-      organization_id: 'org-cafe-01',
+      organization_id: this.tenantService.currentOrg?.id || 'org-default',
       branch_id: 'branch-01',
       table_id: tableId,
       table_number: tableNumber,

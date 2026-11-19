@@ -93,22 +93,12 @@ export class LoginComponent implements OnInit {
 
       if (res.success) {
         if (res.role === 'SUPER_ADMIN') {
-          this.tenantService.switchTenant('org-cafe-01');
           this.router.navigate([res.route || '/super-admin']);
         } else {
           // Dynamically resolve cafe tenant from the authenticated user's organization_id
           const userOrgId = this.authService.currentUser?.organization_id;
           if (userOrgId) {
             this.tenantService.switchTenant(userOrgId);
-          } else {
-            const lower = this.email.toLowerCase();
-            if (lower.includes('frenchroast') || lower.includes('kavita')) {
-              this.tenantService.switchTenant('org-cafe-02');
-            } else if (lower.includes('roasters') || lower.includes('kabir')) {
-              this.tenantService.switchTenant('org-cafe-03');
-            } else {
-              this.tenantService.switchTenant('org-cafe-01');
-            }
           }
           this.router.navigate([res.route || '/orders']);
         }
@@ -141,7 +131,7 @@ export class LoginComponent implements OnInit {
     } else if (code.includes('DEL') || code.includes('RC')) {
       this.tenantService.switchTenant('org-cafe-03');
     } else {
-      this.tenantService.switchTenant('org-cafe-01');
+      this.tenantService.switchTenant('org-default');
     }
 
     this.updateOutletDisplay();

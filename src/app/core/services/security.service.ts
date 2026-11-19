@@ -81,7 +81,7 @@ export class SecurityService {
   }
 
   async logAudit(actionType: string, details: any, authorizedByPin?: string, managerName: string = 'Authorized Manager'): Promise<void> {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const log: AuditLog = {

@@ -20,7 +20,7 @@ export class KdsService {
   private stationsSubject = new BehaviorSubject<KitchenStation[]>([
     {
       id: 'st-01',
-      organization_id: 'org-cafe-01',
+      organization_id: 'org-default',
       branch_id: 'branch-01',
       name: 'Coffee & Beverage Bar',
       code: 'BAR',
@@ -29,7 +29,7 @@ export class KdsService {
     },
     {
       id: 'st-02',
-      organization_id: 'org-cafe-01',
+      organization_id: 'org-default',
       branch_id: 'branch-01',
       name: 'Hot Kitchen & Grill',
       code: 'GRILL',
@@ -38,7 +38,7 @@ export class KdsService {
     },
     {
       id: 'st-03',
-      organization_id: 'org-cafe-01',
+      organization_id: 'org-default',
       branch_id: 'branch-01',
       name: 'Bakery & Dessert Section',
       code: 'BAKERY',

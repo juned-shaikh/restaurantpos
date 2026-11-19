@@ -10,7 +10,7 @@ import { TenantService } from './tenant.service';
 })
 export class StaffService {
   get currentOrgId(): string {
-    return this.tenantService?.currentOrg?.id || 'org-cafe-01';
+    return this.tenantService?.currentOrg?.id || 'org-default';
   }
 
   private get STORAGE_KEY_STAFF(): string {
@@ -196,7 +196,7 @@ export class StaffService {
           const idx = existing.findIndex(e => e.id === dbUser.id || (e.phone && e.phone === dbUser.phone));
           const appUser: AppUser = {
             id: dbUser.id,
-            organization_id: dbUser.organization_id || 'org-cafe-01',
+            organization_id: dbUser.organization_id || 'org-default',
             branch_id: dbUser.branch_id || 'branch-01',
             full_name: dbUser.full_name,
             role: dbUser.role || 'WAITER',
@@ -251,7 +251,7 @@ export class StaffService {
     const baseSalary = Number(staff.monthly_salary) || (staff.hourly_rate ? staff.hourly_rate * 8 * 26 : 16000);
     const newUser: AppUser = {
       id: `staff-${Date.now()}`,
-      organization_id: staff.organization_id || 'org-cafe-01',
+      organization_id: staff.organization_id || 'org-default',
       branch_id: staff.branch_id || 'branch-01',
       full_name: staff.full_name || 'New Staff',
       role: staff.role || 'WAITER',
@@ -322,7 +322,7 @@ export class StaffService {
     const user = this.staffMembers.find(s => s.id === userId);
     const record: AttendanceRecord = {
       id: `att-${Date.now()}`,
-      organization_id: 'org-cafe-01',
+      organization_id: this.currentOrgId,
       branch_id: 'branch-01',
       user_id: userId,
       user_name: user?.full_name || 'Staff',
@@ -343,7 +343,7 @@ export class StaffService {
     if (client) {
       this.supabaseService.from('audit_logs').insert({
         id: `aud-${Date.now()}`,
-        organization_id: 'org-cafe-01',
+        organization_id: this.currentOrgId,
         action_type: 'STAFF_CLOCK_IN',
         action_details: `Staff ${user?.full_name} (${user?.role}) clocked in at ${new Date().toLocaleTimeString()}`,
         performed_by_name: user?.full_name || 'Staff',
@@ -378,7 +378,7 @@ export class StaffService {
     if (client && rec) {
       this.supabaseService.from('audit_logs').insert({
         id: `aud-${Date.now()}`,
-        organization_id: 'org-cafe-01',
+        organization_id: this.currentOrgId,
         action_type: 'STAFF_CLOCK_OUT',
         action_details: `Staff ${rec.user_name} clocked out. Shift Total: ${rec.total_hours} hrs`,
         performed_by_name: rec.user_name,
@@ -465,7 +465,7 @@ export class StaffService {
 
   getCurrentMonthNetPayrollTotal(monthYear: string = '2026-11'): number {
     const records = this.payrollSubject.value.filter(p => p.month_year === monthYear);
-    if (records.length === 0) return 93000;
+    if (records.length === 0) return 0;
     return Math.round(records.reduce((sum, p) => sum + p.net_payable_salary, 0) * 100) / 100;
   }
 }

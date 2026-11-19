@@ -27,7 +27,7 @@ export class TableService {
   }
 
   get currentOrgId(): string {
-    return this.tenantService?.currentOrg?.id || 'org-cafe-01';
+    return this.tenantService?.currentOrg?.id || 'org-default';
   }
 
   get currentBranchId(): string {
@@ -245,7 +245,7 @@ export class TableService {
       if (client) {
         await this.supabaseService.from('tables').upsert({
           id: table.id,
-          organization_id: table.organization_id || 'org-cafe-01',
+          organization_id: table.organization_id || 'org-default',
           branch_id: table.branch_id || 'branch-01',
           floor_id: table.floor_id || 'floor-01',
           table_number: table.table_number,

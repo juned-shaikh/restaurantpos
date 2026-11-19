@@ -15,7 +15,7 @@ export class MenuService {
   items$: Observable<MenuItem[]> = this.itemsSubject.asObservable();
 
   get currentOrgId(): string {
-    return this.tenantService?.currentOrg?.id || 'org-cafe-01';
+    return this.tenantService?.currentOrg?.id || 'org-default';
   }
 
   private get STORAGE_KEY_CATEGORIES(): string {

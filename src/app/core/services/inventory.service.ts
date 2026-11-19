@@ -9,7 +9,7 @@ import { TenantService } from './tenant.service';
 })
 export class InventoryService {
   get currentOrgId(): string {
-    return this.tenantService?.currentOrg?.id || 'org-cafe-01';
+    return this.tenantService?.currentOrg?.id || 'org-default';
   }
 
   get currentBranchId(): string {
@@ -250,7 +250,7 @@ export class InventoryService {
   }): InventoryItem {
     const stock = Number(item.current_stock) || 0;
     const reorder = Number(item.reorder_level) || 0;
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const newItem: InventoryItem = {
@@ -338,7 +338,7 @@ export class InventoryService {
   }
 
   logWaste(log: Omit<WasteLog, 'id' | 'created_at' | 'organization_id' | 'branch_id'>): void {
-    const orgId = this.tenantService.currentOrg?.id || 'org-cafe-01';
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
 
     const newLog: WasteLog = {
