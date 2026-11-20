@@ -241,6 +241,19 @@ CREATE TABLE IF NOT EXISTS public.app_users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 13. GUEST SERVICE REQUESTS (CALL WAITER / BILL REQUEST)
+CREATE TABLE IF NOT EXISTS public.guest_requests (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL DEFAULT 'org-default',
+    branch_id TEXT NOT NULL DEFAULT 'branch-01',
+    table_id TEXT NOT NULL,
+    table_number TEXT NOT NULL,
+    request_type TEXT NOT NULL, -- 'CALL_WAITER', 'REQUEST_BILL', 'WATER', 'CUSTOM'
+    status TEXT NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'ACCEPTED', 'RESOLVED'
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES FOR INSTANT DEMO & TESTING
 -- ==============================================================================
@@ -257,13 +270,14 @@ ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.guest_requests ENABLE ROW LEVEL SECURITY;
 
 -- Allow unrestricted CRUD on public demo schema
 DO $$ 
 DECLARE
   tbl text;
 BEGIN
-  FOREACH tbl IN ARRAY ARRAY['floors', 'tables', 'menu_categories', 'menu_items', 'orders', 'kot_tickets', 'expenses', 'cash_closings', 'inventory_items', 'customers', 'customer_feedback', 'organizations', 'app_users']
+  FOREACH tbl IN ARRAY ARRAY['floors', 'tables', 'menu_categories', 'menu_items', 'orders', 'kot_tickets', 'expenses', 'cash_closings', 'inventory_items', 'customers', 'customer_feedback', 'organizations', 'app_users', 'guest_requests']
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Public access on %I" ON public.%I;', tbl, tbl);
     EXECUTE format('CREATE POLICY "Public access on %I" ON public.%I FOR ALL USING (true) WITH CHECK (true);', tbl, tbl);
@@ -281,7 +295,7 @@ BEGIN
     'floors', 'tables', 'menu_categories', 'menu_items', 
     'orders', 'kot_tickets', 'expenses', 'cash_closings', 
     'inventory_items', 'customers', 'customer_feedback',
-    'organizations', 'app_users'
+    'organizations', 'app_users', 'guest_requests'
   ]
   LOOP
     IF NOT EXISTS (

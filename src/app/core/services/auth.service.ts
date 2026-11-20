@@ -435,20 +435,25 @@ export class AuthService {
   }
 
   private setSessionUser(user: AppUser): void {
-    this.currentUserSubject.next(user);
+    const sanitizedUser: AppUser = { ...user };
+    delete (sanitizedUser as any).password;
+    delete (sanitizedUser as any).manager_pin;
+    delete (sanitizedUser as any).pin;
+
+    this.currentUserSubject.next(sanitizedUser);
     this.isAuthenticatedSubject.next(true);
 
-    if (user.organization_id) {
+    if (sanitizedUser.organization_id) {
       try {
-        localStorage.setItem('orderrestro_active_org_id_v2', user.organization_id);
-        this.tenantService?.switchTenant(user.organization_id);
+        localStorage.setItem('orderrestro_active_org_id_v2', sanitizedUser.organization_id);
+        this.tenantService?.switchTenant(sanitizedUser.organization_id);
       } catch (e) {}
     }
 
     try {
       const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days session
-      const signature = this.generateSignature(user, expiresAt);
-      const envelope: SessionEnvelope = { user, expiresAt, signature };
+      const signature = this.generateSignature(sanitizedUser, expiresAt);
+      const envelope: SessionEnvelope = { user: sanitizedUser, expiresAt, signature };
       localStorage.setItem(this.SESSION_STORAGE_KEY, JSON.stringify(envelope));
     } catch {}
   }

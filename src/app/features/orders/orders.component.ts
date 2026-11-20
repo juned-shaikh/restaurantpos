@@ -543,9 +543,18 @@ export class OrdersComponent implements OnInit, OnDestroy {
 
   openPayment(order?: Order): void {
     // 1. Prioritize explicitly passed order, or currently active running table order
-    const existing = order || this.activeOrderToSettle || this.orderService.getOrderByTableId(this.selectedTableId);
+    let existing = order || this.activeOrderToSettle || this.orderService.getOrderByTableId(this.selectedTableId);
 
     if (existing) {
+      // Check if cashier added new dishes to cart without explicitly clicking "Send to Kitchen" first
+      const unsentItems = this.cartItems.filter(i => !i.is_sent_to_kitchen);
+      if (unsentItems.length > 0) {
+        // Automatically commit pending dishes to the active running bill so they are NEVER omitted from the final invoice
+        existing = this.orderService.appendItemsToRunningOrder(existing.id, unsentItems);
+        this.cartItems = existing.items.map(it => ({ ...it, is_sent_to_kitchen: true }));
+        this.toast.info(`Committed ${unsentItems.length} pending dish(es) to bill before payment.`, 'Bill Updated');
+      }
+
       this.activeOrderToSettle = existing;
       // Load existing items into cart if not already
       if (existing.items && this.cartItems.length === 0) {

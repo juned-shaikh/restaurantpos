@@ -6,6 +6,7 @@ import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
 import { StaffService } from './staff.service';
 import { AuthService } from './auth.service';
+import { OfflineSyncService } from './offline-sync.service';
 
 export interface MonthlyOverheads {
   store_rent: number;
@@ -66,7 +67,8 @@ export class FinanceService {
     private supabaseService: SupabaseService,
     private tenantService: TenantService,
     private staffService: StaffService,
-    private authService: AuthService
+    private authService: AuthService,
+    private offlineSync: OfflineSyncService
   ) {
     this.initInitialState();
     this.recalculateBudgets();
@@ -475,13 +477,17 @@ export class FinanceService {
         });
 
         if (error) {
-          console.warn('⚠️ [Finance] Supabase save notice for expense:', error.message || error);
+          console.warn('⚠️ [Finance] Supabase save notice for expense, queueing offline:', error.message || error);
+          this.offlineSync.queueExpense(expense);
         } else {
           console.log('☁️ [Finance] Expense saved successfully to Supabase:', expense.id);
         }
+      } else {
+        this.offlineSync.queueExpense(expense);
       }
     } catch (e) {
-      console.warn('⚠️ [Finance] Could not save expense to Supabase (offline):', e);
+      console.warn('⚠️ [Finance] Could not save expense to Supabase (offline), queueing:', e);
+      this.offlineSync.queueExpense(expense);
     }
   }
 

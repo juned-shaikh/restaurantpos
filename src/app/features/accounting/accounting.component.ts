@@ -135,10 +135,11 @@ export class AccountingComponent implements OnInit, OnDestroy {
       })
     );
 
-    // 4. Subscribe to Live Orders from POS
+    // 4. Subscribe to Live Orders from POS & load full date range for complete financials
     this.subs.add(
-      this.orderService.activeOrders$.subscribe(orders => {
-        this.settledOrders = orders.filter(o => o.is_settled || o.status === 'SETTLED');
+      this.orderService.activeOrders$.subscribe(async orders => {
+        const localSettled = orders.filter(o => o.is_settled || o.status === 'SETTLED');
+        this.settledOrders = localSettled;
 
         // Dynamically auto-sync cash sales if cashier hasn't manually overridden it
         if (!this.hasUserEditedSales) {
@@ -148,6 +149,20 @@ export class AccountingComponent implements OnInit, OnDestroy {
           }
         }
         this.recalculateStatements();
+
+        // Asynchronously fetch complete settled orders for the current tenant from cloud (surpassing 100 limit)
+        const orgId = this.tenantService.currentOrg?.id || 'org-default';
+        const fullOrders = await this.orderService.loadSettledOrdersForDateRange(orgId);
+        if (fullOrders && fullOrders.length > this.settledOrders.length) {
+          this.settledOrders = fullOrders;
+          if (!this.hasUserEditedSales) {
+            this.cashSales = this.todayPosCashSales;
+            if (!this.hasUserEditedCountedCash) {
+              this.actualCountedCash = this.computedExpectedCash;
+            }
+          }
+          this.recalculateStatements();
+        }
       })
     );
 
@@ -664,8 +679,13 @@ export class AccountingComponent implements OnInit, OnDestroy {
     this.hasUserEditedCountedCash = true;
   }
 
-  onPeriodChange(period: any): void {
+  async onPeriodChange(period: any): Promise<void> {
     this.selectedPeriod = period;
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
+    const fullOrders = await this.orderService.loadSettledOrdersForDateRange(orgId);
+    if (fullOrders && fullOrders.length > 0) {
+      this.settledOrders = fullOrders;
+    }
     this.recalculateStatements();
   }
 

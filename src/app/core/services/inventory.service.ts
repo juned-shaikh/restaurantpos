@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { InventoryItem, Recipe, WasteLog, UnitOfMeasure } from '../models/inventory.model';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
+import { OfflineSyncService } from './offline-sync.service';
 
 @Injectable({
   providedIn: 'root'
@@ -41,7 +42,8 @@ export class InventoryService {
 
   constructor(
     private supabaseService: SupabaseService,
-    private tenantService: TenantService
+    private tenantService: TenantService,
+    private offlineSync: OfflineSyncService
   ) {
     this.initInitialState();
     this.initSupabaseSync();
@@ -347,9 +349,15 @@ export class InventoryService {
         .then((res: any) => {
           if (!res?.error) {
             console.log(`☁️ [Inventory] Restocked ${item.name}: +${qty} ${item.uom}. New stock: ${newStock}`);
+          } else {
+            this.offlineSync.queueInventoryUpdate(itemId, newStock, isLow, avgCost);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          this.offlineSync.queueInventoryUpdate(itemId, newStock, isLow, avgCost);
+        });
+    } else {
+      this.offlineSync.queueInventoryUpdate(itemId, newStock, isLow, avgCost);
     }
 
     return true;
@@ -431,23 +439,34 @@ export class InventoryService {
 
     if (targetItem) {
       const itemToUpdate = targetItem as InventoryItem;
-      this.supabaseService
-        .from('inventory_items')
-        .update({
-          current_stock: itemToUpdate.current_stock,
-          is_low_stock: itemToUpdate.is_low_stock
-        })
-        .eq('id', itemId)
-        .then((res: any) => {
-          if (res?.error) console.warn('Supabase updateStock error:', res.error);
-        })
-        .catch((err: any) => console.error(err));
+      if (this.supabaseService.client) {
+        this.supabaseService
+          .from('inventory_items')
+          .update({
+            current_stock: itemToUpdate.current_stock,
+            is_low_stock: itemToUpdate.is_low_stock
+          })
+          .eq('id', itemId)
+          .then((res: any) => {
+            if (res?.error) {
+              console.warn('Supabase updateStock error:', res.error);
+              this.offlineSync.queueInventoryUpdate(itemId, itemToUpdate.current_stock, !!itemToUpdate.is_low_stock);
+            }
+          })
+          .catch((err: any) => {
+            console.error(err);
+            this.offlineSync.queueInventoryUpdate(itemId, itemToUpdate.current_stock, !!itemToUpdate.is_low_stock);
+          });
+      } else {
+        this.offlineSync.queueInventoryUpdate(itemId, itemToUpdate.current_stock, !!itemToUpdate.is_low_stock);
+      }
     }
   }
 
   /**
    * Automatically deducts ingredient/item stock when an order is settled at the POS till.
    * Checks both Recipe Bill of Materials (BOM ingredients) and direct retail item stock.
+   * Uses STRICT matching to avoid erroneously deducting ingredients with similar names.
    */
   deductStockForOrderItems(orderItems: { menu_item_id?: string; name: string; quantity: number }[]): void {
     if (!orderItems || orderItems.length === 0) return;
@@ -458,11 +477,12 @@ export class InventoryService {
 
     for (const orderItem of orderItems) {
       const soldQty = Number(orderItem.quantity) || 1;
+      const itemNameLower = (orderItem.name || '').trim().toLowerCase();
 
       // 1. Check if there is a Recipe configured for this menu dish
       const recipe = recipes.find(r =>
         (orderItem.menu_item_id && r.menu_item_id === orderItem.menu_item_id) ||
-        (r.menu_item_name && r.menu_item_name.toLowerCase() === orderItem.name.toLowerCase())
+        (r.menu_item_name && r.menu_item_name.trim().toLowerCase() === itemNameLower)
       );
 
       if (recipe && recipe.ingredients && recipe.ingredients.length > 0) {
@@ -470,7 +490,7 @@ export class InventoryService {
         for (const ing of recipe.ingredients) {
           const target = currentItems.find(i =>
             i.id === ing.inventory_item_id ||
-            (ing.inventory_item_name && i.name.toLowerCase() === ing.inventory_item_name.toLowerCase())
+            (ing.inventory_item_name && i.name.trim().toLowerCase() === ing.inventory_item_name.trim().toLowerCase())
           );
           if (target) {
             const requiredPerPortion = Number(ing.quantity_required) || 0;
@@ -484,17 +504,25 @@ export class InventoryService {
               this.supabaseService.from('inventory_items').update({
                 current_stock: remaining,
                 is_low_stock: target.is_low_stock
-              }).eq('id', target.id).then();
+              }).eq('id', target.id).then((res: any) => {
+                if (res?.error) {
+                  this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
+                }
+              }).catch(() => {
+                this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
+              });
+            } else {
+              this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
             }
           }
         }
       } else {
-        // 2. Direct retail item fallback (e.g. Canned Drinks, Mineral Water, direct inventory item)
+        // 2. Direct retail item fallback (e.g. Canned Drinks, Mineral Water, Packaged Snacks)
+        // STRICT EXACT MATCH ONLY: Match exact ID, SKU, or identical dish name.
+        // NEVER perform loose substring .includes() matching which corrupts raw ingredients (e.g. "Chicken Biryani" matching "Chicken")
         const target = currentItems.find(i =>
-          (orderItem.menu_item_id && i.id === orderItem.menu_item_id) ||
-          i.name.toLowerCase() === orderItem.name.toLowerCase() ||
-          i.name.toLowerCase().includes(orderItem.name.toLowerCase()) ||
-          orderItem.name.toLowerCase().includes(i.name.toLowerCase())
+          (orderItem.menu_item_id && (i.id === orderItem.menu_item_id || i.sku === orderItem.menu_item_id)) ||
+          i.name.trim().toLowerCase() === itemNameLower
         );
 
         if (target) {
@@ -507,7 +535,15 @@ export class InventoryService {
             this.supabaseService.from('inventory_items').update({
               current_stock: remaining,
               is_low_stock: target.is_low_stock
-            }).eq('id', target.id).then();
+            }).eq('id', target.id).then((res: any) => {
+              if (res?.error) {
+                this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
+              }
+            }).catch(() => {
+              this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
+            });
+          } else {
+            this.offlineSync.queueInventoryUpdate(target.id, remaining, !!target.is_low_stock);
           }
         }
       }
@@ -515,7 +551,7 @@ export class InventoryService {
 
     if (hasChanges) {
       this.setIngredientsState(currentItems);
-      console.log('📦 [Inventory] Stock automatically deducted for settled order items (Recipe BOM + Direct Items).');
+      console.log('📦 [Inventory] Stock automatically deducted for settled order items (Recipe BOM + Strict Direct Items).');
     }
   }
 

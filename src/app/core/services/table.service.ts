@@ -269,6 +269,7 @@ export class TableService {
       width: Number(table.width) || 90,
       height: Number(table.height) || 90,
       status: table.status || 'AVAILABLE',
+      current_order_id: table.current_order_id || null,
       current_bill_amount: Number(table.active_bill_amount || table.current_bill_amount || 0),
       qr_token: table.qr_token || null,
       is_active: table.is_active !== false
@@ -359,14 +360,14 @@ export class TableService {
     return this.tables.find(t => t.qr_token === qrToken);
   }
 
-  updateTableStatus(tableId: string, status: Table['status'], billAmount?: number): void {
+  updateTableStatus(tableId: string, status: Table['status'], billAmount?: number, orderId?: string): void {
     const updated = this.tables.map(t => {
       if (t.id === tableId) {
         return {
           ...t,
           status,
           active_bill_amount: status === 'AVAILABLE' ? 0 : (billAmount ?? t.active_bill_amount),
-          current_order_id: status === 'AVAILABLE' ? undefined : t.current_order_id,
+          current_order_id: status === 'AVAILABLE' ? undefined : (orderId || t.current_order_id),
           seated_at: status === 'AVAILABLE' ? undefined : (t.seated_at || new Date().toISOString())
         };
       }
@@ -378,11 +379,33 @@ export class TableService {
     if (tbl) this.saveTableToSupabase(tbl);
   }
 
-  transferTable(req: TableTransferRequest): boolean {
+  async transferTable(req: TableTransferRequest): Promise<boolean> {
     const fromTable = this.getTableById(req.fromTableId);
-    const toTable = this.getTableById(req.toTableId);
+    let toTable = this.getTableById(req.toTableId);
 
-    if (!fromTable || !toTable || toTable.status !== 'AVAILABLE') {
+    if (!fromTable || !toTable) {
+      return false;
+    }
+
+    // Server-side live concurrency check: ensure destination table is NOT occupied in Cloud
+    if (this.supabaseService.client) {
+      try {
+        const { data, error } = await this.supabaseService
+          .from('tables')
+          .select('status, current_order_id')
+          .eq('id', req.toTableId)
+          .single();
+
+        if (!error && data && data.status !== 'AVAILABLE') {
+          console.warn(`⚠️ [TableService] Concurrency clash: Table ${toTable.table_number} is already occupied in Cloud!`);
+          toTable.status = data.status;
+          this.tablesSubject.next([...this.tables]);
+          return false;
+        }
+      } catch (e) {}
+    }
+
+    if (toTable.status !== 'AVAILABLE') {
       return false;
     }
 

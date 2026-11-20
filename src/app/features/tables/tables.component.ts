@@ -178,10 +178,10 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.showTransferModal = true;
   }
 
-  executeTransfer(): void {
+  async executeTransfer(): Promise<void> {
     if (!this.selectedTable || !this.transferTargetTableId) return;
 
-    const success = this.tableService.transferTable({
+    const success = await this.tableService.transferTable({
       fromTableId: this.selectedTable.id,
       toTableId: this.transferTargetTableId,
       orderId: this.selectedTable.current_order_id || 'transfer-ord'
@@ -192,7 +192,7 @@ export class TablesComponent implements OnInit, OnDestroy {
       this.showTransferModal = false;
       this.transferTargetTableId = '';
     } else {
-      this.toast.error('Could not transfer table. Target table might not be available.', 'Transfer Failed');
+      this.toast.error('Could not transfer table. Target table might not be available or already occupied.', 'Transfer Failed');
     }
   }
 

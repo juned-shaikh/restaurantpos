@@ -315,13 +315,31 @@ export class KdsService {
       created_at: new Date().toISOString()
     };
     
-    // Check if ticket already exists
+    // Check if ticket already exists (e.g. Round 2 re-order for existing running table)
     const existing = this.ticketsSubject.value;
     const idx = existing.findIndex(t => t.id === newTicket.id || (t.order_id && t.order_id === newTicket.order_id));
     if (idx >= 0) {
+      // PRESERVE previous items and append newly ordered dishes (Round N KOT merge)
+      const prevTicket = existing[idx];
+      const existingItemIds = new Set(prevTicket.items.map(i => i.order_item_id || i.id));
+      const newItemsToAppend = newTicket.items.filter(i => !existingItemIds.has(i.order_item_id || i.id));
+
+      const mergedTicket: KotTicket = {
+        ...prevTicket,
+        ...newTicket,
+        id: prevTicket.id,
+        kot_number: newTicket.kot_number || prevTicket.kot_number,
+        items: [...prevTicket.items, ...newItemsToAppend],
+        status: prevTicket.status === 'BUMPED' ? 'PENDING' : (prevTicket.status || 'PENDING')
+      };
+
       const updated = [...existing];
-      updated[idx] = { ...updated[idx], ...newTicket };
+      updated[idx] = mergedTicket;
       this.ticketsSubject.next(updated);
+      this.persistTicketsLocally();
+      this.saveTicketToSupabase(mergedTicket);
+      this.soundService.playNewKotChime();
+      return;
     } else {
       this.ticketsSubject.next([newTicket, ...existing]);
     }

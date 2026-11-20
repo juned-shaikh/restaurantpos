@@ -103,8 +103,19 @@ export class OrderService {
   private persistOrdersLocally(): void {
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
     try {
-      localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(this.activeOrders));
-    } catch (e) {}
+      // Retain all non-settled active orders + max 50 recent settled orders in localStorage
+      // Older orders reside safely in Supabase Cloud without exhausting browser quota
+      const active = this.activeOrders.filter(o => !o.is_settled && o.status !== 'SETTLED' && o.status !== 'CANCELLED');
+      const recentSettled = this.activeOrders.filter(o => o.is_settled || o.status === 'SETTLED' || o.status === 'CANCELLED').slice(0, 50);
+      const toStore = [...active, ...recentSettled];
+      localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(toStore));
+    } catch (e) {
+      console.warn('⚠️ [OrderService] LocalStorage quota limit approached, pruning local cache:', e);
+      try {
+        const activeOnly = this.activeOrders.filter(o => !o.is_settled && o.status !== 'SETTLED');
+        localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(activeOnly));
+      } catch {}
+    }
   }
 
   public async loadOrdersForOrg(orgId: string): Promise<void> {
@@ -134,6 +145,51 @@ export class OrderService {
     } catch (err) {
       console.warn('⚠️ [OrderService] Supabase order load notice:', err);
     }
+  }
+
+  /**
+   * Fetches settled orders for exact accounting & tax reporting across arbitrary date ranges
+   * without being capped by in-memory limits.
+   */
+  public async loadSettledOrdersForDateRange(orgId: string, startDate?: string, endDate?: string): Promise<Order[]> {
+    const client = this.supabaseService.client;
+    if (!client) {
+      return this.activeOrders.filter(o => {
+        if (!o.is_settled && o.status !== 'SETTLED') return false;
+        const d = (o.settled_at || o.created_at || '').slice(0, 10);
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
+      });
+    }
+
+    try {
+      let query = this.supabaseService
+        .from('orders')
+        .select('*')
+        .eq('organization_id', orgId)
+        .or('is_settled.eq.true,status.eq.SETTLED')
+        .order('created_at', { ascending: false });
+
+      if (startDate) {
+        query = query.gte('created_at', `${startDate}T00:00:00Z`);
+      }
+      if (endDate) {
+        query = query.lte('created_at', `${endDate}T23:59:59Z`);
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        return (data as any[]).map((o: any) => ({
+          ...o,
+          payment_mode: o.payment_mode || (o.payments && o.payments.length > 0 ? o.payments[0].payment_mode : undefined)
+        }));
+      }
+    } catch (err) {
+      console.warn('⚠️ [OrderService] Supabase date range query notice:', err);
+    }
+
+    return this.activeOrders.filter(o => o.is_settled || o.status === 'SETTLED');
   }
 
   private async initSupabaseSync(): Promise<void> {
@@ -168,6 +224,33 @@ export class OrderService {
           const updated = this.activeOrders.map(o => o.id === item.id ? { ...o, ...item } : o);
           this.activeOrdersSubject.next(updated);
           this.persistOrdersLocally();
+        }
+      });
+
+      // Realtime listener for cross-terminal guest service requests (Call Waiter / Request Bill)
+      this.supabaseService.subscribeToTableChanges('guest_requests', (payload: any) => {
+        const req = payload.new as GuestRequest;
+        if (!req) return;
+
+        const currentOrgId = this.tenantService.currentOrg?.id || 'org-default';
+        if (req.organization_id && req.organization_id !== currentOrgId) {
+          return;
+        }
+
+        if (payload.eventType === 'INSERT') {
+          const exists = this.guestRequestsSubject.value.some(r => r.id === req.id);
+          if (!exists) {
+            this.guestRequestsSubject.next([req, ...this.guestRequestsSubject.value]);
+            this.soundService.playCallWaiterAlert();
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          if (req.status === 'RESOLVED') {
+            this.guestRequestsSubject.next(this.guestRequestsSubject.value.filter(r => r.id !== req.id));
+          } else {
+            this.guestRequestsSubject.next(this.guestRequestsSubject.value.map(r => r.id === req.id ? { ...r, ...req } : r));
+          }
+        } else if (payload.eventType === 'DELETE' && payload.old?.id) {
+          this.guestRequestsSubject.next(this.guestRequestsSubject.value.filter(r => r.id !== payload.old.id));
         }
       });
     } catch (err) {
@@ -378,13 +461,19 @@ export class OrderService {
       }
     } catch (e) {}
 
-    // Find highest order number among all loaded active orders
+    // Find highest numerical sequence across all loaded orders
     const activeMax = this.activeOrders.reduce((max, o) => {
       const num = parseInt(o.order_number, 10);
       return !isNaN(num) && num > max ? num : max;
     }, 100);
 
-    const nextNum = Math.max(lastSeq + 1, activeMax + 1, 101);
+    let nextNum = Math.max(lastSeq + 1, activeMax + 1, 101);
+
+    // Guard against collision with any existing active order on this device
+    while (this.activeOrders.some(o => o.order_number === String(nextNum))) {
+      nextNum++;
+    }
+
     try {
       localStorage.setItem(seqKey, String(nextNum));
     } catch (e) {}
@@ -463,7 +552,7 @@ export class OrderService {
     }
 
     if (tableId) {
-      this.tableService.updateTableStatus(tableId, 'OCCUPIED', newOrder.total_amount);
+      this.tableService.updateTableStatus(tableId, 'OCCUPIED', newOrder.total_amount, newOrder.id);
     }
 
     // Automatically route to Kitchen Display System (KDS)
@@ -555,7 +644,7 @@ export class OrderService {
 
     // Update Table running bill amount
     if (existing.table_id) {
-      this.tableService.updateTableStatus(existing.table_id, 'OCCUPIED', updatedOrder.total_amount);
+      this.tableService.updateTableStatus(existing.table_id, 'OCCUPIED', updatedOrder.total_amount, updatedOrder.id);
     }
 
     // Route ONLY the new items to Kitchen KDS (Round N KOT!)
@@ -717,9 +806,10 @@ export class OrderService {
 
   // QR Guest Service Requests
   submitGuestRequest(tableId: string, tableNumber: string, requestType: GuestRequest['request_type'], notes?: string): void {
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const req: GuestRequest = {
-      id: `gr-${Date.now()}`,
-      organization_id: this.tenantService.currentOrg?.id || 'org-default',
+      id: `gr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      organization_id: orgId,
       branch_id: 'branch-01',
       table_id: tableId,
       table_number: tableNumber,
@@ -736,10 +826,22 @@ export class OrderService {
     }
 
     this.soundService.playCallWaiterAlert();
+
+    // Persist and broadcast to Supabase Cloud so all cashier/waiter terminals receive the alert
+    if (this.supabaseService.client) {
+      this.supabaseService.from('guest_requests').insert([req]).then((res: any) => {
+        if (res?.error) {
+          console.warn('⚠️ [OrderService] Supabase guest_requests insert notice:', res.error);
+        }
+      }).catch(() => {});
+    }
   }
 
   resolveGuestRequest(id: string): void {
     this.guestRequestsSubject.next(this.guestRequestsSubject.value.filter(r => r.id !== id));
+    if (this.supabaseService.client) {
+      this.supabaseService.from('guest_requests').update({ status: 'RESOLVED' }).eq('id', id).then();
+    }
   }
 }
 
