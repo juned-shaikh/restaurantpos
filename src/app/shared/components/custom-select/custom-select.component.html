@@ -29,8 +29,6 @@
     *ngIf="isOpen"
     [class.open-upwards]="openUpwards"
     [class.align-right]="menuAlign === 'right'"
-    [style.width]="menuWidth || null"
-    [style.min-width]="menuMinWidth || null"
     (click)="$event.stopPropagation()"
   >
     <!-- Search filter if more than 4 options -->

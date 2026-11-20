@@ -28,7 +28,6 @@ export class SidebarComponent implements OnInit {
   isMobileOpen = false;
 
   navItems: NavItem[] = [
-    { label: 'SaaS Platform Control', route: '/super-admin', icon: 'ri-vip-crown-line', badge: 'OWNER', roles: ['SUPER_ADMIN'] },
     { label: 'Dashboard', route: '/analytics', icon: 'ri-dashboard-3-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'ACCOUNTANT'] },
     { label: 'Point of Sale', route: '/orders', icon: 'ri-shopping-cart-2-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER'] },
     { label: 'Tables', route: '/tables', icon: 'ri-layout-grid-line', roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'WAITER', 'CASHIER'], flag: 'enable_tables' },

@@ -69,25 +69,7 @@
           <div style="font-size: 11px; color: #64748B; margin-top: 2px;">Cafe: {{ currentOrg.name }}</div>
         </div>
 
-        <!-- Super Admin Only: Switch Between Client Tenants -->
-        <ng-container *ngIf="authService.isSuperAdmin">
-          <div class="dropdown-section-title">SWITCH CAFE (TENANT)</div>
-          <button
-            *ngFor="let t of (tenantService.tenants$ | async)"
-            class="dropdown-item"
-            (click)="switchCafe(t.id)"
-            [style.fontWeight]="currentOrg.id === t.id ? '700' : 'normal'"
-          >
-            <i class="ri-store-2-line" style="color: #881337; font-size: 15px;"></i>
-            <span>{{ t.name }} ({{ t.city || 'Outlet' }})</span>
-          </button>
-
-          <div class="dropdown-divider"></div>
-          <a routerLink="/super-admin" class="dropdown-item" (click)="showUserDropdown = false">
-            <i class="ri-vip-crown-2-line" style="color: #D97706; font-size: 15px;"></i> Open SaaS Super Admin Portal
-          </a>
-        </ng-container>
-
+        <!-- Cafe Outlet Info -->
         <a *ngIf="authService.hasRole('SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER')" routerLink="/staff" class="dropdown-item" (click)="showUserDropdown = false">
           <i class="ri-time-line" style="color: #0284C7; font-size: 15px;"></i> Staff Attendance & Management
         </a>

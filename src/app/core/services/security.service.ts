@@ -57,9 +57,21 @@ export class SecurityService {
 
   /**
    * Prompts the UI for Manager PIN approval before executing sensitive operations
-   * (e.g. Disounts > 10%, Voiding Orders, Cancelling KOT items)
+   * Auto-approves without dialog if the logged-in user is already an Owner / Admin / Manager
    */
   requestManagerApproval(action: string, description: string): Promise<boolean> {
+    try {
+      const savedSession = localStorage.getItem('orderrestro_session_v3');
+      if (savedSession) {
+        const env = JSON.parse(savedSession);
+        const role = env?.user?.role;
+        // If logged in as Admin / Owner / Manager, auto-approve directly without blocking the cashier
+        if (role === 'ORG_ADMIN' || role === 'BRANCH_MANAGER' || role === 'SUPER_ADMIN') {
+          return Promise.resolve(true);
+        }
+      }
+    } catch {}
+
     return new Promise((resolve) => {
       this.activeApprovalRequestSubject.next({
         action,

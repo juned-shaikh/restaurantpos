@@ -107,6 +107,12 @@ export class CustomSelectComponent implements ControlValueAccessor {
       const spaceBelow = window.innerHeight - rect.bottom;
       // If less than 240px below and enough space above, flip upwards
       this.openUpwards = spaceBelow < 240 && rect.top > 240;
+
+      // Guard against right screen edge overflow on mobile / narrow screens
+      const screenWidth = window.innerWidth;
+      if (rect.left + 240 > screenWidth) {
+        this.menuAlign = 'right';
+      }
     } catch {
       this.openUpwards = false;
     }

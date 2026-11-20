@@ -109,30 +109,6 @@
         </div>
       </div>
     </div>
-
-    <!-- RIGHT: Waitlist Sidebar -->
-    <div class="waitlist-card card">
-      <div class="waitlist-head">
-        <h3 class="waitlist-title">Waitlist</h3>
-        <button class="btn btn-secondary btn-sm" (click)="activeTab = 'waitlist'">
-          <i class="ri-user-add-line"></i> Add to waitlist
-        </button>
-      </div>
-
-      <div class="waitlist-body">
-        <div *ngIf="waitlist.length === 0" class="no-waitlist-msg">
-          No one waiting.
-        </div>
-
-        <div *ngFor="let w of waitlist" class="waitlist-item">
-          <div>
-            <strong>{{ w.customer_name }}</strong>
-            <div style="font-size: 11.5px; color: #64748B;">{{ w.party_size }} guests · {{ w.phone }}</div>
-          </div>
-          <button class="btn btn-primary btn-sm" (click)="seatWaitlistGuest(w.id)">Seat</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- TAB 2: RESERVATIONS LIST -->

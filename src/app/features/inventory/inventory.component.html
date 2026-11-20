@@ -18,44 +18,27 @@
       <button *ngIf="activeTab === 'ingredients'" class="btn btn-primary" (click)="showAddIngredientModal = true">
         <i class="ri-add-line"></i> New ingredient
       </button>
-      <button *ngIf="activeTab === 'orders'" class="btn btn-primary" (click)="showPoModal = true">
-        <i class="ri-file-add-line"></i> New purchase order
-      </button>
       <button *ngIf="activeTab === 'waste'" class="btn btn-primary" (click)="openWasteModal()">
         <i class="ri-delete-bin-line"></i> Log waste
       </button>
     </div>
   </div>
 
-  <!-- Horizontal Underline Tabs (Matches Reference Image 4) -->
+  <!-- Horizontal Underline Tabs -->
   <div class="underline-tabs">
     <button
       class="tab-link"
       [class.active]="activeTab === 'ingredients'"
       (click)="activeTab = 'ingredients'"
     >
-      Ingredients
-    </button>
-    <button
-      class="tab-link"
-      [class.active]="activeTab === 'suppliers'"
-      (click)="activeTab = 'suppliers'"
-    >
-      Suppliers
-    </button>
-    <button
-      class="tab-link"
-      [class.active]="activeTab === 'orders'"
-      (click)="activeTab = 'orders'"
-    >
-      Purchase Orders
+      Ingredients & Stock
     </button>
     <button
       class="tab-link"
       [class.active]="activeTab === 'waste'"
       (click)="activeTab = 'waste'"
     >
-      Waste
+      Waste & Loss Log
     </button>
   </div>
 
@@ -109,65 +92,7 @@
     </div>
   </div>
 
-  <!-- TAB 2: PURCHASE ORDERS LIST (Matches Reference Image 4 Right Pane) -->
-  <div *ngIf="activeTab === 'orders'" class="tab-pane-content">
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>PO #</th>
-            <th>Supplier</th>
-            <th>Status</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let po of purchaseOrders">
-            <td><strong style="color: #0F172A;">{{ po.po_number }}</strong></td>
-            <td>{{ po.supplier_name }}</td>
-            <td>
-              <span class="po-received-badge">
-                {{ po.status }}
-              </span>
-            </td>
-            <td>{{ po.items.length || 1 }}</td>
-            <td><strong>₹{{ po.total_amount | number:'1.2-2' }}</strong></td>
-            <td>{{ po.created_at | date:'dd/MM/yyyy' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- TAB 3: SUPPLIERS -->
-  <div *ngIf="activeTab === 'suppliers'" class="tab-pane-content">
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Supplier Name</th>
-            <th>Contact Person</th>
-            <th>Phone</th>
-            <th>Payment Terms</th>
-            <th>Rating</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let s of suppliers">
-            <td><strong>{{ s.name }}</strong></td>
-            <td>{{ s.contact_person }}</td>
-            <td>{{ s.phone }}</td>
-            <td>Net {{ s.payment_terms_days }} Days</td>
-            <td><span class="badge badge-warning">⭐ {{ s.rating }}</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- TAB 4: WASTE LOGS -->
+  <!-- TAB 2: WASTE LOGS -->
   <div *ngIf="activeTab === 'waste'" class="tab-pane-content">
     <div class="data-table-container">
       <table class="data-table">

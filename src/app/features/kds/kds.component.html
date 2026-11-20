@@ -1,28 +1,16 @@
 <div class="kds-page">
-  <!-- Top Title & Station Filter Pills Row -->
+  <!-- Top Title & Live Kitchen Feed -->
   <div class="kds-title-row">
     <div>
       <h1 class="page-title">Kitchen Display</h1>
-      <p class="page-subtitle">Live order tickets by station</p>
+      <p class="page-subtitle">Unified live kitchen order tickets</p>
     </div>
 
-    <!-- Station Filter Pills -->
-    <div class="station-filter-pills">
-      <button
-        class="station-pill"
-        [class.active]="selectedStationId === 'ALL'"
-        (click)="selectedStationId = 'ALL'"
-      >
-        All Stations ({{ tickets.length }})
-      </button>
-      <button
-        *ngFor="let st of stations"
-        class="station-pill"
-        [class.active]="selectedStationId === st.id"
-        (click)="selectedStationId = st.id"
-      >
-        {{ st.name }}
-      </button>
+    <!-- Unified Live Feed Status -->
+    <div>
+      <span class="badge badge-available" style="font-size: 12.5px; padding: 6px 14px; font-weight: 600;">
+        <i class="ri-fire-line" style="color: #16A34A; margin-right: 4px;"></i> Live Kitchen Feed ({{ tickets.length }} active)
+      </span>
     </div>
   </div>
 

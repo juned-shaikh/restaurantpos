@@ -341,7 +341,7 @@
         </div>
       </div>
 
-      <!-- Payment Mode Tabs -->
+      <!-- Payment Mode Tabs (UPI, CASH, CARD) -->
       <div style="display: flex; gap: 6px; margin-bottom: 16px;">
         <button class="filter-pill" [class.active]="paymentMode === 'UPI'" (click)="setPaymentMode('UPI')">
           <i class="ri-qr-code-line"></i> Dynamic UPI QR
@@ -351,9 +351,6 @@
         </button>
         <button class="filter-pill" [class.active]="paymentMode === 'CARD'" (click)="setPaymentMode('CARD')">
           <i class="ri-bank-card-line"></i> Card / POS
-        </button>
-        <button class="filter-pill" [class.active]="paymentMode === 'SPLIT'" (click)="setPaymentMode('SPLIT')">
-          <i class="ri-pie-chart-line"></i> Split Tender
         </button>
       </div>
 
@@ -390,48 +387,6 @@
         <p style="font-size: 14px; font-weight: 600;">Swipe or Tap Card on Thermal EDC Terminal</p>
         <p style="font-size: 12px; color: #64748B;">Once transaction is approved, click Confirm below.</p>
       </div>
-
-      <!-- TAB 4: SPLIT TENDER / PART PAYMENTS -->
-      <div *ngIf="paymentMode === 'SPLIT'" style="padding: 10px 0;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
-          <span>Paid so far: <b style="color: #16A34A;">₹{{ totalPaidSoFar | number:'1.2-2' }}</b></span>
-          <span>Remaining: <b style="color: #DC2626;">₹{{ remainingBalance | number:'1.2-2' }}</b></span>
-        </div>
-
-        <!-- Add Payment Entry Form -->
-        <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;" *ngIf="remainingBalance > 0">
-          <div style="width: 140px;">
-            <app-custom-select
-              [options]="partPaymentModeOptions"
-              [(ngModel)]="partPaymentMode"
-              size="md"
-            ></app-custom-select>
-          </div>
-          <input
-            type="number"
-            [(ngModel)]="partPaymentAmount"
-            placeholder="Amount"
-            class="form-control"
-            style="flex: 1;"
-          >
-          <button
-            class="btn btn-sm btn-primary"
-            (click)="addSplitTender(partPaymentMode, partPaymentAmount)"
-          >
-            + Add
-          </button>
-        </div>
-
-        <!-- Split Payments List -->
-        <div *ngIf="splitPayments.length > 0" style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px;">
-          <div *ngFor="let p of splitPayments; let i = index" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid #F1F5F9;">
-            <span>{{ p.mode }} Tender: <b>₹{{ p.amount | number:'1.2-2' }}</b></span>
-            <button class="btn btn-sm text-danger" (click)="removeSplitTender(i)">
-              <i class="ri-close-line"></i>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Modal Footer Actions -->
@@ -439,7 +394,6 @@
       <button class="btn btn-secondary" (click)="showPaymentModal = false">Cancel</button>
       <button
         class="btn btn-primary"
-        [disabled]="paymentMode === 'SPLIT' && remainingBalance > 0"
         (click)="confirmSettlementAndPrint()"
       >
         <i class="ri-printer-line"></i> Confirm Settlement & Print Receipt
