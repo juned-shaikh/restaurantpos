@@ -428,6 +428,43 @@ export class InventoryService {
   }
 
   /**
+   * Automatically deducts ingredient/item stock when an order is settled at the POS till
+   */
+  deductStockForOrderItems(orderItems: { menu_item_id?: string; name: string; quantity: number }[]): void {
+    if (!orderItems || orderItems.length === 0) return;
+
+    let hasChanges = false;
+    const currentItems = this.ingredients.map(i => ({ ...i }));
+
+    for (const orderItem of orderItems) {
+      const target = currentItems.find(i =>
+        (orderItem.menu_item_id && i.id === orderItem.menu_item_id) ||
+        i.name.toLowerCase() === orderItem.name.toLowerCase()
+      );
+
+      if (target) {
+        const qtyToDeduct = Number(orderItem.quantity) || 1;
+        const remaining = Math.max(0, Math.round((target.current_stock - qtyToDeduct) * 100) / 100);
+        target.current_stock = remaining;
+        target.is_low_stock = remaining <= target.reorder_level;
+        hasChanges = true;
+
+        if (this.supabaseService.client) {
+          this.supabaseService.from('inventory_items').update({
+            current_stock: remaining,
+            is_low_stock: target.is_low_stock
+          }).eq('id', target.id).then();
+        }
+      }
+    }
+
+    if (hasChanges) {
+      this.setIngredientsState(currentItems);
+      console.log('📦 [Inventory] Stock automatically deducted for settled order items.');
+    }
+  }
+
+  /**
    * Manual refresh trigger to pull latest data from Supabase
    */
   async refreshFromSupabase(): Promise<void> {

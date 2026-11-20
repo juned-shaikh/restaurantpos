@@ -214,14 +214,8 @@ export class AccountingComponent implements OnInit, OnDestroy {
   getOrderAmountByMode(order: Order, mode: 'CASH' | 'UPI' | 'CARD'): number {
     if (order.payments && Array.isArray(order.payments) && order.payments.length > 0) {
       return order.payments
-        .filter(p => {
-          if (mode === 'CARD') return p.payment_mode === 'CARD' || p.payment_mode === 'SPLIT';
-          return p.payment_mode === mode;
-        })
+        .filter(p => p.payment_mode === mode)
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    }
-    if (mode === 'CARD' && (order.payment_mode === 'CARD' || order.payment_mode === 'SPLIT')) {
-      return Number(order.grand_total || order.total_amount) || 0;
     }
     if (order.payment_mode === mode) {
       return Number(order.grand_total || order.total_amount) || 0;
@@ -235,42 +229,46 @@ export class AccountingComponent implements OnInit, OnDestroy {
     const orderDate = new Date(dateStr);
     if (isNaN(orderDate.getTime())) return false;
 
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+    const now = new Date();
+    // In hospitality / restaurant operations: shifts that cross midnight belong to the same business day.
+    // Business day starts at 5:00 AM and ends at 4:59:59 AM next calendar morning.
+    const isEarlyMorning = now.getHours() < 5;
+    const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (isEarlyMorning ? -1 : 0));
+    const startOfToday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), 5, 0, 0, 0);
+    const endOfToday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + 1, 4, 59, 59, 999);
 
     switch (period) {
       case 'DAILY':
         return orderDate >= startOfToday && orderDate <= endOfToday;
 
       case 'YESTERDAY': {
-        const startOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 0, 0, 0, 0);
-        const endOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 23, 59, 59, 999);
+        const startOfYesterday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() - 1, 5, 0, 0, 0);
+        const endOfYesterday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), 4, 59, 59, 999);
         return orderDate >= startOfYesterday && orderDate <= endOfYesterday;
       }
 
       case 'WEEKLY': {
-        const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6, 0, 0, 0, 0);
+        const weekAgo = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() - 6, 5, 0, 0, 0);
         return orderDate >= weekAgo && orderDate <= endOfToday;
       }
 
       case 'MONTHLY': {
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+        const startOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1, 5, 0, 0, 0);
         return orderDate >= startOfMonth && orderDate <= endOfToday;
       }
 
       case 'LAST_3_MONTHS': {
-        const threeMAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1, 0, 0, 0, 0);
+        const threeMAgo = new Date(baseDate.getFullYear(), baseDate.getMonth() - 2, 1, 5, 0, 0, 0);
         return orderDate >= threeMAgo && orderDate <= endOfToday;
       }
 
       case 'LAST_6_MONTHS': {
-        const sixMAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1, 0, 0, 0, 0);
+        const sixMAgo = new Date(baseDate.getFullYear(), baseDate.getMonth() - 5, 1, 5, 0, 0, 0);
         return orderDate >= sixMAgo && orderDate <= endOfToday;
       }
 
       case 'YEARLY': {
-        const startOfYear = new Date(today.getFullYear(), 0, 1, 0, 0, 0, 0);
+        const startOfYear = new Date(baseDate.getFullYear(), 0, 1, 5, 0, 0, 0);
         return orderDate >= startOfYear && orderDate <= endOfToday;
       }
 

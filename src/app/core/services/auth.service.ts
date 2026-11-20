@@ -247,8 +247,7 @@ export class AuthService {
           const isMatch = (match.passwordHash === hashedInput) ||
                           (match.passwordPlain === pwd) ||
                           (match.user?.manager_pin === pwd) ||
-                          (match.user?.pin === pwd) ||
-                          (pwd === '1234');
+                          (match.user?.pin === pwd);
           if (!isMatch) {
             return { success: false, message: 'Invalid password or PIN for this account. Please try again.' };
           }
@@ -282,8 +281,7 @@ export class AuthService {
             });
             if (staffMatch) {
               const isMatch = (staffMatch.manager_pin === pwd) ||
-                              (staffMatch.pin === pwd) ||
-                              (pwd === '1234');
+                              (staffMatch.pin === pwd);
               if (isMatch) {
                 const user: AppUser = { ...staffMatch, last_login_at: new Date().toISOString() };
                 this.setSessionUser(user);
@@ -325,31 +323,41 @@ export class AuthService {
   }
 
   /**
-   * Fast Staff Numpad PIN Login
+   * Fast Staff Numpad PIN Login with roster verification
    */
   loginWithPin(pin: string, staffName: string = 'Staff Member', role: UserRole = 'WAITER'): boolean {
     if (!pin || pin.length !== 4) return false;
 
-    // PIN 9999 logs in directly as Super Admin Owner
-    if (pin === '9999') {
-      this.setSessionUser(this.defaultSuperAdmin);
-      return true;
-    }
+    // Check staff members across local rosters
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('orderrestro_staff_members_')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const staffList: AppUser[] = JSON.parse(raw);
+            const matched = staffList.find(s => (s.pin === pin || s.manager_pin === pin) && s.is_active);
+            if (matched) {
+              this.setSessionUser({ ...matched, last_login_at: new Date().toISOString() });
+              return true;
+            }
+          }
+        }
+      }
 
-    const user: AppUser = {
-      id: `staff-${Date.now()}`,
-      organization_id: localStorage.getItem('orderrestro_active_org_id_v2') || 'org-default',
-      branch_id: 'branch-01',
-      full_name: staffName,
-      role: role,
-      hourly_rate: 180,
-      is_active: true,
-      last_login_at: new Date().toISOString(),
-      created_at: new Date().toISOString()
-    };
+      // Check registered users
+      const registeredJson = localStorage.getItem(this.REGISTERED_USERS_KEY);
+      if (registeredJson) {
+        const usersList: { user: AppUser }[] = JSON.parse(registeredJson);
+        const match = usersList.find(u => (u.user?.manager_pin === pin || u.user?.pin === pin) && u.user?.is_active);
+        if (match) {
+          this.setSessionUser({ ...match.user, last_login_at: new Date().toISOString() });
+          return true;
+        }
+      }
+    } catch {}
 
-    this.setSessionUser(user);
-    return true;
+    return false;
   }
 
   /**

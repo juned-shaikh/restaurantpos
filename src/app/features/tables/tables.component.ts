@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { TableService } from '../../core/services/table.service';
 import { OrderService } from '../../core/services/order.service';
 import { PrintService } from '../../core/services/print.service';
@@ -14,11 +15,12 @@ import { Order } from '../../core/models/order.model';
   templateUrl: './tables.component.html',
   styleUrls: ['./tables.component.scss']
 })
-export class TablesComponent implements OnInit {
+export class TablesComponent implements OnInit, OnDestroy {
   floors: Floor[] = [];
   tables: Table[] = [];
   waitlist: WaitlistEntry[] = [];
   reservations: Reservation[] = [];
+  private subs = new Subscription();
 
   selectedFloorId: string = '';
   selectedTable: Table | null = null;
@@ -70,22 +72,30 @@ export class TablesComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.tableService.floors$.subscribe(f => {
-      this.floors = f;
-      if (f.length > 0 && (!this.selectedFloorId || !f.some(fl => fl.id === this.selectedFloorId))) {
-        this.selectedFloorId = f[0].id;
-      }
-    });
+    this.subs.add(
+      this.tableService.floors$.subscribe(f => {
+        this.floors = f;
+        if (f.length > 0 && (!this.selectedFloorId || !f.some(fl => fl.id === this.selectedFloorId))) {
+          this.selectedFloorId = f[0].id;
+        }
+      })
+    );
 
-    this.tableService.tables$.subscribe(t => {
-      this.tables = t;
-      if (this.selectedTable) {
-        this.selectedTable = t.find(item => item.id === this.selectedTable?.id) || null;
-      }
-    });
+    this.subs.add(
+      this.tableService.tables$.subscribe(t => {
+        this.tables = t;
+        if (this.selectedTable) {
+          this.selectedTable = t.find(item => item.id === this.selectedTable?.id) || null;
+        }
+      })
+    );
 
-    this.tableService.waitlist$.subscribe(w => this.waitlist = w);
-    this.tableService.reservations$.subscribe(r => this.reservations = r);
+    this.subs.add(this.tableService.waitlist$.subscribe(w => this.waitlist = w));
+    this.subs.add(this.tableService.reservations$.subscribe(r => this.reservations = r));
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   getTableCountForFloor(floorId: string): number {

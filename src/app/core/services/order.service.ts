@@ -8,6 +8,7 @@ import { KdsService } from './kds.service';
 import { OfflineSyncService } from './offline-sync.service';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
+import { InventoryService } from './inventory.service';
 
 @Injectable({
   providedIn: 'root'
@@ -38,7 +39,8 @@ export class OrderService {
     private kdsService: KdsService,
     public offlineSync: OfflineSyncService,
     private supabaseService: SupabaseService,
-    private tenantService: TenantService
+    private tenantService: TenantService,
+    private inventoryService: InventoryService
   ) {
     this.initInitialOrders();
     this.initCrossTabSync();
@@ -50,6 +52,36 @@ export class OrderService {
         this.loadOrdersForOrg(org.id);
       }
     });
+
+    // Listen to Table Transfers to synchronously re-link order's table_id and table_number
+    this.tableService.tableTransferred$.subscribe(req => {
+      if (req && req.orderId && req.toTableId) {
+        const toTable = this.tableService.getTableById(req.toTableId);
+        this.updateOrderTable(req.orderId, req.toTableId, toTable?.table_number || 'Table');
+      }
+    });
+  }
+
+  updateOrderTable(orderId: string, toTableId: string, toTableNumber: string): void {
+    const updated = this.activeOrders.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          table_id: toTableId,
+          table_number: toTableNumber
+        };
+      }
+      return o;
+    });
+    this.activeOrdersSubject.next(updated);
+    this.persistOrdersLocally();
+
+    if (this.supabaseService.client) {
+      this.supabaseService.from('orders').update({
+        table_id: toTableId,
+        table_number: toTableNumber
+      }).eq('id', orderId).then();
+    }
   }
 
   private initInitialOrders(): void {
@@ -206,20 +238,35 @@ export class OrderService {
     } catch (e) {}
   }
 
-  private async settleOrderInSupabase(orderId: string, payment: PaymentRecord): Promise<void> {
+  private async settleOrderInSupabase(orderId: string, paymentOrPayments: PaymentRecord | PaymentRecord[]): Promise<void> {
+    const order = this.getOrderById(orderId);
+    if (!order) return;
+
+    const paymentsList = Array.isArray(paymentOrPayments) ? paymentOrPayments : [paymentOrPayments];
+
     try {
       const client = this.supabaseService.client;
       if (client) {
-        const order = this.getOrderById(orderId);
-        await this.supabaseService.from('orders').update({
+        const { error } = await this.supabaseService.from('orders').update({
           is_settled: true,
           status: 'SETTLED',
           settled_at: new Date().toISOString(),
-          payments: order?.payments || [payment]
+          payment_mode: order.payment_mode,
+          payments: order.payments || paymentsList
         }).eq('id', orderId);
-        console.log('☁️ [OrderService] Order settlement synced to Supabase Cloud:', orderId);
+
+        if (error) {
+          console.warn('⚠️ [OrderService] Cloud settle failed, queueing offline:', error.message || error);
+          this.offlineSync.queueOrder(order);
+        } else {
+          console.log('☁️ [OrderService] Order settlement synced to Supabase Cloud:', orderId);
+        }
+      } else {
+        this.offlineSync.queueOrder(order);
       }
-    } catch (e) {}
+    } catch (e) {
+      this.offlineSync.queueOrder(order);
+    }
   }
 
   private initCrossTabSync(): void {
@@ -371,6 +418,7 @@ export class OrderService {
       sgst_amount: taxRes.sgstAmount,
       round_off: taxRes.roundOff,
       total_amount: taxRes.grandTotal,
+      kot_count: 1,
       is_settled: false,
       created_at: new Date().toISOString()
     };
@@ -448,6 +496,7 @@ export class OrderService {
     // Recalculate consolidated bill
     const rawSubtotal = mergedItems.reduce((sum, item) => sum + item.total_price, 0);
     const taxRes = this.taxCalculator.calculateTax(rawSubtotal, existing.discount_pct || 0);
+    const currentRound = (existing.kot_count || 1) + 1;
 
     const updatedOrder: Order = {
       ...existing,
@@ -459,6 +508,7 @@ export class OrderService {
       sgst_amount: taxRes.sgstAmount,
       round_off: taxRes.roundOff,
       total_amount: taxRes.grandTotal,
+      kot_count: currentRound,
       status: 'IN_KITCHEN'
     };
 
@@ -472,13 +522,13 @@ export class OrderService {
       this.tableService.updateTableStatus(existing.table_id, 'OCCUPIED', updatedOrder.total_amount);
     }
 
-    // Route ONLY the new items to Kitchen KDS (Round 2 KOT!)
+    // Route ONLY the new items to Kitchen KDS (Round N KOT!)
     this.kdsService.createTicket({
       organization_id: updatedOrder.organization_id,
       branch_id: updatedOrder.branch_id,
       order_id: updatedOrder.id,
       order_number: updatedOrder.order_number,
-      kot_number: `KOT-${updatedOrder.order_number}-R2`,
+      kot_number: `KOT-${updatedOrder.order_number}-R${currentRound}`,
       table_number: updatedOrder.table_number || 'Table',
       order_type: updatedOrder.order_type,
       status: 'PENDING',
@@ -491,7 +541,7 @@ export class OrderService {
         quantity: it.quantity,
         modifiers_summary: it.modifiers?.map(m => m.name).join(', '),
         is_struck_through: false,
-        notes: it.notes || 'Additional Re-order (Round 2)',
+        notes: it.notes || `Additional Re-order (Round ${currentRound})`,
         created_at: new Date().toISOString()
       }))
     });
@@ -537,12 +587,97 @@ export class OrderService {
       this.tableService.updateTableStatus(order.table_id, 'AVAILABLE', 0);
     }
 
+    // Automatically deduct sold items from inventory stock
+    this.inventoryService.deductStockForOrderItems(order.items);
+
     const settleInfo = {
       orderId,
       amount: amountPaid,
       mode: paymentMode,
       orderNo: order.order_number
     };
+    this.orderSettledSubject.next(settleInfo);
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {}
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'ORDER_SETTLED',
+          payload: settleInfo
+        });
+        this.broadcastChannel.postMessage({
+          type: 'LIVE_CART_UPDATE',
+          payload: null
+        });
+      } catch (e) {}
+    }
+
+    this.soundService.playPaymentSuccess();
+  }
+
+  /**
+   * Settle payment with split modes (e.g. part Cash + part UPI)
+   */
+  settleOrderWithSplitPayments(orderId: string, splitPayments: PaymentRecord[]): void {
+    const order = this.getOrderById(orderId);
+    if (!order) return;
+
+    const totalPaid = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    const updated = this.activeOrders.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          is_settled: true,
+          status: 'SETTLED' as const,
+          settled_at: new Date().toISOString(),
+          payment_mode: 'SPLIT' as any,
+          payments: splitPayments
+        };
+      }
+      return o;
+    });
+
+    this.activeOrdersSubject.next(updated);
+    this.persistOrdersLocally();
+    this.settleOrderInSupabase(orderId, splitPayments);
+
+    // Free up table if dine-in
+    if (order.table_id) {
+      this.tableService.updateTableStatus(order.table_id, 'AVAILABLE', 0);
+    }
+
+    // Automatically deduct sold items from inventory stock
+    this.inventoryService.deductStockForOrderItems(order.items);
+
+    const settleInfo = {
+      orderId,
+      amount: totalPaid,
+      mode: 'SPLIT',
+      orderNo: order.order_number
+    };
+    this.orderSettledSubject.next(settleInfo);
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (e) {}
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'ORDER_SETTLED',
+          payload: settleInfo
+        });
+        this.broadcastChannel.postMessage({
+          type: 'LIVE_CART_UPDATE',
+          payload: null
+        });
+      } catch (e) {}
+    }
+
+    this.soundService.playPaymentSuccess();
+  }
     this.orderSettledSubject.next(settleInfo);
     try {
       localStorage.removeItem(this.STORAGE_KEY);

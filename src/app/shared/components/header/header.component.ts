@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { TenantService } from '../../../core/services/tenant.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderService } from '../../../core/services/order.service';
@@ -17,7 +18,7 @@ import { GuestRequest } from '../../../core/models/order.model';
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss']
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
   currentOrg!: Organization;
   activeBranch!: Branch;
   branches: Branch[] = [];
@@ -28,6 +29,8 @@ export class HeaderComponent implements OnInit {
   currentTimeString = '';
 
   showUserDropdown = false;
+  private subs = new Subscription();
+  private clockTimer: any = null;
 
   constructor(
     public tenantService: TenantService,
@@ -51,14 +54,21 @@ export class HeaderComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.tenantService.currentOrg$.subscribe(org => this.currentOrg = org);
-    this.tenantService.activeBranch$.subscribe(b => this.activeBranch = b);
-    this.tenantService.branches$.subscribe(list => this.branches = list);
-    this.authService.currentUser$.subscribe(u => this.currentUser = u);
-    this.orderService.guestRequests$.subscribe(reqs => this.guestRequests = reqs);
+    this.subs.add(this.tenantService.currentOrg$.subscribe(org => this.currentOrg = org));
+    this.subs.add(this.tenantService.activeBranch$.subscribe(b => this.activeBranch = b));
+    this.subs.add(this.tenantService.branches$.subscribe(list => this.branches = list));
+    this.subs.add(this.authService.currentUser$.subscribe(u => this.currentUser = u));
+    this.subs.add(this.orderService.guestRequests$.subscribe(reqs => this.guestRequests = reqs));
 
     this.updateClock();
-    setInterval(() => this.updateClock(), 1000);
+    this.clockTimer = setInterval(() => this.updateClock(), 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer);
+    }
+    this.subs.unsubscribe();
   }
 
   updateClock(): void {

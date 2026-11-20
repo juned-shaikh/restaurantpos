@@ -13,11 +13,13 @@ export class TableService {
   private tablesSubject = new BehaviorSubject<Table[]>([]);
   private waitlistSubject = new BehaviorSubject<WaitlistEntry[]>([]);
   private reservationsSubject = new BehaviorSubject<Reservation[]>([]);
+  private tableTransferredSubject = new BehaviorSubject<TableTransferRequest | null>(null);
 
   floors$: Observable<Floor[]> = this.floorsSubject.asObservable();
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
   waitlist$: Observable<WaitlistEntry[]> = this.waitlistSubject.asObservable();
   reservations$: Observable<Reservation[]> = this.reservationsSubject.asObservable();
+  tableTransferred$: Observable<TableTransferRequest | null> = this.tableTransferredSubject.asObservable();
 
   private get STORAGE_KEY_TABLES(): string {
     return `orderrestro_tables_${this.currentOrgId}`;
@@ -415,6 +417,7 @@ export class TableService {
     this.persistTablesLocally();
     this.updateTableInSupabase(req.fromTableId, 'AVAILABLE', 0);
     this.updateTableInSupabase(req.toTableId, 'OCCUPIED', fromTable.active_bill_amount);
+    this.tableTransferredSubject.next(req);
     return true;
   }
 

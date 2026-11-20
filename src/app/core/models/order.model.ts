@@ -67,6 +67,7 @@ export interface Order {
   grand_total?: number;
   payment_mode?: PaymentMode;
   discount_approved_by?: string;
+  kot_count?: number;
   
   payments?: PaymentRecord[];
   is_settled: boolean;

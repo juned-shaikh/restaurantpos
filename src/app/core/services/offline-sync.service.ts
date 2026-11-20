@@ -52,11 +52,16 @@ export class OfflineSyncService {
 
   queueOrder(order: Order): void {
     const queue = this.getQueuedOrders();
+    const existingIdx = queue.findIndex(o => o.id === order.id);
     const offlineOrder: Order = {
       ...order,
       special_notes: (order.special_notes ? order.special_notes + ' ' : '') + '[SAVED OFFLINE]'
     };
-    queue.push(offlineOrder);
+    if (existingIdx >= 0) {
+      queue[existingIdx] = offlineOrder;
+    } else {
+      queue.push(offlineOrder);
+    }
     try {
       localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
       this.updateQueuedCount();

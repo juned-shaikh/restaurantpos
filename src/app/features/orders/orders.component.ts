@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { MenuService } from '../../core/services/menu.service';
 import { OrderService } from '../../core/services/order.service';
 import { TableService } from '../../core/services/table.service';
@@ -23,12 +24,14 @@ export interface SplitPayment {
   templateUrl: './orders.component.html',
   styleUrls: ['./orders.component.scss']
 })
-export class OrdersComponent implements OnInit {
+export class OrdersComponent implements OnInit, OnDestroy {
   categories: MenuCategory[] = [];
   items: MenuItem[] = [];
   tables: Table[] = [];
   selectedCategoryId: string = 'ALL';
   searchQuery: string = '';
+
+  private subs = new Subscription();
 
   // Active POS Cart
   cartItems: OrderItem[] = [];
@@ -138,31 +141,43 @@ export class OrdersComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.menuService.categories$.subscribe(c => this.categories = c);
-    this.menuService.items$.subscribe(i => this.items = i);
-    this.tableService.tables$.subscribe(t => {
-      this.tables = t;
-      if (t.length > 0 && !this.selectedTableId) {
-        const activeTable = t.find(tbl => tbl.status === 'OCCUPIED' || tbl.status === 'BILL_REQUESTED') || t[0];
-        this.selectedTableId = activeTable.id;
-        this.onTableSelect();
-      }
-    });
+    this.subs.add(
+      this.menuService.categories$.subscribe(c => this.categories = c)
+    );
+    this.subs.add(
+      this.menuService.items$.subscribe(i => this.items = i)
+    );
+    this.subs.add(
+      this.tableService.tables$.subscribe(t => {
+        this.tables = t;
+        if (t.length > 0 && !this.selectedTableId) {
+          const activeTable = t.find(tbl => tbl.status === 'OCCUPIED' || tbl.status === 'BILL_REQUESTED') || t[0];
+          this.selectedTableId = activeTable.id;
+          this.onTableSelect();
+        }
+      })
+    );
 
     // Check query params if navigated directly to settle a table (e.g. from /tables)
-    this.route.queryParams.subscribe(params => {
-      if (params['tableId']) {
-        this.selectedTableId = params['tableId'];
-        this.orderType = 'DINE_IN';
-        this.onTableSelect();
+    this.subs.add(
+      this.route.queryParams.subscribe(params => {
+        if (params['tableId']) {
+          this.selectedTableId = params['tableId'];
+          this.orderType = 'DINE_IN';
+          this.onTableSelect();
 
-        if (params['settle'] === 'true') {
-          setTimeout(() => {
-            this.openPayment();
-          }, 200);
+          if (params['settle'] === 'true') {
+            setTimeout(() => {
+              this.openPayment();
+            }, 200);
+          }
         }
-      }
-    });
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   onTableSelect(): void {
@@ -438,23 +453,45 @@ export class OrdersComponent implements OnInit {
     }
 
     const table = this.tables.find(t => t.id === this.selectedTableId);
-    const tempOrder = this.orderService.createOrder(
-      this.orderType === 'DINE_IN' ? this.selectedTableId : undefined,
-      this.orderType === 'DINE_IN' ? table?.table_number : 'Takeaway',
-      this.orderType,
-      this.cartItems,
-      this.customerName,
-      this.customerPhone,
-      this.discountPct
-    );
+    const existing = this.activeOrderToSettle || (this.selectedTableId ? this.orderService.getOrderByTableId(this.selectedTableId) : undefined);
 
-    // Print Pre-Bill (Proforma)
-    this.printService.printOrderReceipt(tempOrder, this.tenantService.activeBranch, true);
+    let proformaOrder: Order;
+    if (existing) {
+      proformaOrder = existing;
+    } else {
+      const taxRes = this.taxCalculator.calculateTax(this.cartSubtotal, this.discountPct);
+      proformaOrder = {
+        id: `proforma-${Date.now()}`,
+        organization_id: this.tenantService.currentOrg?.id || 'org-default',
+        branch_id: 'branch-01',
+        order_number: 'ESTIMATE',
+        order_type: this.orderType,
+        table_id: this.selectedTableId,
+        table_number: this.orderType === 'DINE_IN' ? table?.table_number : 'Takeaway',
+        customer_name: this.customerName,
+        customer_phone: this.customerPhone,
+        status: 'OPEN',
+        items: this.cartItems,
+        subtotal: this.cartSubtotal,
+        discount_pct: this.discountPct,
+        discount_amount: taxRes.discountAmount,
+        taxable_amount: taxRes.taxableAmount,
+        cgst_amount: taxRes.cgstAmount,
+        sgst_amount: taxRes.sgstAmount,
+        round_off: taxRes.roundOff,
+        total_amount: taxRes.grandTotal,
+        is_settled: false,
+        created_at: new Date().toISOString()
+      };
+    }
+
+    // Print Pre-Bill (Proforma without dispatching new kitchen tickets)
+    this.printService.printOrderReceipt(proformaOrder, this.tenantService.activeBranch, true);
     this.toast.info(`Pre-bill estimate printed for Table ${table?.table_number || 'Order'}!`, 'Running Bill Printed');
 
     // Mark table status as BILL_REQUESTED (never charges or frees table!)
     if (this.selectedTableId) {
-      this.tableService.updateTableStatus(this.selectedTableId, 'BILL_REQUESTED', tempOrder.total_amount);
+      this.tableService.updateTableStatus(this.selectedTableId, 'BILL_REQUESTED', proformaOrder.total_amount);
     }
   }
 
@@ -562,16 +599,25 @@ export class OrdersComponent implements OnInit {
       return;
     }
 
-    const effectiveMode = this.paymentMode === 'SPLIT' ? 'CARD' : this.paymentMode;
     const settledOrder = this.activeOrderToSettle;
     const amount = settledOrder.total_amount;
     const tableNo = settledOrder.table_number || '';
 
-    this.orderService.settleOrder(
-      settledOrder.id,
-      effectiveMode,
-      settledOrder.total_amount
-    );
+    if (this.paymentMode === 'SPLIT') {
+      const splitRecords = this.splitPayments.map(sp => ({
+        order_id: settledOrder.id,
+        payment_mode: sp.mode,
+        amount: sp.amount,
+        created_at: new Date().toISOString()
+      }));
+      this.orderService.settleOrderWithSplitPayments(settledOrder.id, splitRecords);
+    } else {
+      this.orderService.settleOrder(
+        settledOrder.id,
+        this.paymentMode,
+        settledOrder.total_amount
+      );
+    }
 
     // Auto print final tax invoice receipt
     this.printService.printOrderReceipt(settledOrder, this.tenantService.activeBranch, false);
@@ -580,7 +626,7 @@ export class OrdersComponent implements OnInit {
     this.activeOrderToSettle = null;
     this.splitPayments = [];
     this.clearCart();
-    this.toast.success(`Payment of ₹${amount} received via ${effectiveMode} for Table ${tableNo}! Tax invoice printed.`, 'Order Settled');
+    this.toast.success(`Payment of ₹${amount} received for Table ${tableNo}! Tax invoice printed.`, 'Order Settled');
   }
 
   confirmSettlementAndPrint(): void {
