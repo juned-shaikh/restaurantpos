@@ -32,6 +32,44 @@
   gap: 8px;
 }
 
+.timeframe-select-box {
+  width: 250px;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .page-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .report-tabs {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 4px !important;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    .filter-pill, .btn {
+      flex-shrink: 0 !important;
+      white-space: nowrap !important;
+    }
+  }
+
+  .timeframe-select-box {
+    width: 100% !important;
+  }
+}
+
 /* Metrics Row (4 Cards) - Fully Responsive */
 .metrics-row {
   display: grid;
