@@ -4,6 +4,7 @@
   gap: 20px;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -13,12 +14,18 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .staff-nav-tabs {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
@@ -52,6 +59,8 @@
   gap: 12px;
   margin-bottom: 16px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -59,7 +68,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 380px;
+  max-width: 420px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -74,9 +83,10 @@
 }
 
 .month-select-wrapper {
-  flex: 1;
+  flex: 1 1 0%;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -127,14 +137,16 @@
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
   }
 
   .month-selector-group {
-    max-width: 100%;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
+    max-width: 100% !important;
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
   }
 
   .month-selector-label {
@@ -146,12 +158,15 @@
   }
 
   .month-select-wrapper {
-    width: 100%;
-    min-width: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto;
   }
 
   .payroll-actions-group {
     width: 100%;
+    max-width: 100%;
     display: flex;
     justify-content: space-between;
     gap: 8px;
