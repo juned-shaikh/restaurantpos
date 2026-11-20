@@ -110,7 +110,7 @@
   left: 0;
   width: max-content;
   min-width: 100%;
-  max-width: min(450px, 92vw);
+  max-width: min(360px, calc(100vw - 20px));
   background-color: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 10px;
@@ -131,11 +131,8 @@
     right: 0;
   }
 
-  @media (max-width: 480px) {
-    width: 100% !important;
-    max-width: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
+  @media (max-width: 768px) {
+    max-width: calc(100vw - 20px) !important;
   }
 }
 
