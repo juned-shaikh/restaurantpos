@@ -9,16 +9,10 @@
     <!-- Report Switcher Pills -->
     <div class="report-tabs">
       <button class="filter-pill" [class.active]="activeReport === 'dashboard'" (click)="activeReport = 'dashboard'">
-        <i class="ri-dashboard-line"></i> Overview
-      </button>
-      <button class="filter-pill" [class.active]="activeReport === 'peakhours'" (click)="activeReport = 'peakhours'">
-        <i class="ri-time-line"></i> Peak Hours
+        <i class="ri-dashboard-line"></i> Sales & Orders Overview
       </button>
       <button class="filter-pill" [class.active]="activeReport === 'velocity'" (click)="activeReport = 'velocity'">
-        <i class="ri-speed-up-line"></i> Menu Velocity
-      </button>
-      <button class="filter-pill" [class.active]="activeReport === 'retention'" (click)="activeReport = 'retention'">
-        <i class="ri-user-heart-line"></i> Retention
+        <i class="ri-fire-line"></i> Top Selling Items & Margins
       </button>
       <button class="btn btn-secondary btn-sm" (click)="exportVelocityCsv()">
         <i class="ri-download-2-line"></i> Export CSV
@@ -222,48 +216,9 @@
     </div>
   </div>
 
-  <!-- PEAK HOURS TAB -->
-  <div *ngIf="activeReport === 'peakhours'" class="dashboard-content card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <div>
-        <h3>Peak Hours Footfall & Sales Heatmap</h3>
-        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
-          Automatically aggregates hourly order frequency and sales volume.
-        </p>
-      </div>
-      <button class="btn btn-secondary btn-sm" (click)="exportPeakHoursCsv()">
-        <i class="ri-download-2-line"></i> Export Heatmap
-      </button>
-    </div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Time Window</th>
-            <th>Orders Placed</th>
-            <th>Sales Volume</th>
-            <th>Kitchen & Service Intensity</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let p of peakHours">
-            <td><strong>{{ p.hour_label }}</strong></td>
-            <td><b>{{ p.order_count }}</b> bills</td>
-            <td>₹{{ p.sales_amount | number:'1.2-2' }}</td>
-            <td>
-              <span class="badge" [class.badge-success]="p.occupancy_intensity < 60" [class.badge-warning]="p.occupancy_intensity >= 60 && p.occupancy_intensity < 85" [class.badge-danger]="p.occupancy_intensity >= 85">
-                {{ p.occupancy_intensity }}% Load
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- VELOCITY & MARGINS TAB -->
   <div *ngIf="activeReport === 'velocity'" class="dashboard-content card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
       <div>
         <h3>Menu Item Sales Velocity & Cost Margins</h3>
         <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
@@ -301,38 +256,6 @@
           </tr>
         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- RETENTION TAB -->
-  <div *ngIf="activeReport === 'retention'" class="dashboard-content card">
-    <div style="margin-bottom: 20px;">
-      <h3>Customer Loyalty & Retention Performance</h3>
-      <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
-        Live analytics from CRM membership, repeat customer visits, and loyalty redemptions.
-      </p>
-    </div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
-        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">REPEAT VISIT RATE</span>
-        <div style="font-size: 28px; font-weight: 800; color: #16A34A; margin-top: 6px;">{{ retention.repeat_customers_pct }}%</div>
-        <span style="font-size: 11px; color: var(--text-muted);">Guests with 2+ visits</span>
-      </div>
-      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
-        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">REGISTERED MEMBERS</span>
-        <div style="font-size: 28px; font-weight: 800; color: #0F172A; margin-top: 6px;">{{ retention.total_registered_customers }}</div>
-        <span style="font-size: 11px; color: var(--text-muted);">+{{ retention.new_customers_this_month }} joined this month</span>
-      </div>
-      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
-        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">AVG SPEND PER GUEST</span>
-        <div style="font-size: 28px; font-weight: 800; color: #4F46E5; margin-top: 6px;">₹{{ retention.avg_spend_per_customer }}</div>
-        <span style="font-size: 11px; color: var(--text-muted);">Average order value</span>
-      </div>
-      <div class="card" style="background: #FAFAFA; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px;">
-        <span style="font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">LOYALTY POINTS REDEEMED</span>
-        <div style="font-size: 28px; font-weight: 800; color: #881337; margin-top: 6px;">₹{{ retention.points_redeemed_value | number:'1.0-0' }}</div>
-        <span style="font-size: 11px; color: var(--text-muted);">Rewards savings delivered</span>
-      </div>
     </div>
   </div>
 </div>

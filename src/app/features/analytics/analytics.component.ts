@@ -49,7 +49,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     ready: 0
   };
 
-  activeReport: 'dashboard' | 'peakhours' | 'velocity' | 'retention' = 'dashboard';
+  activeReport: 'dashboard' | 'velocity' = 'dashboard';
   selectedTimeframe: 'today' | 'week' | 'month' | 'last3m' | 'last6m' | 'year' = 'today';
 
   timeframeOptions = [
@@ -168,7 +168,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     }
   }
 
-  setActiveReport(report: 'dashboard' | 'peakhours' | 'velocity' | 'retention'): void {
+  setActiveReport(report: 'dashboard' | 'velocity'): void {
     this.activeReport = report;
   }
 

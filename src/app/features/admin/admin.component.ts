@@ -15,10 +15,8 @@ export class AdminComponent implements OnInit {
   branch!: Branch;
 
   taxRegimeOptions: SelectOption[] = [
-    { label: 'India GST (CGST + SGST Dual Split)', value: 'INDIA_GST', icon: 'ri-flag-line', subtext: 'Default 2.5% CGST + 2.5% SGST' },
-    { label: 'US Sales Tax (State + County, Exclusive)', value: 'US_SALES_TAX', icon: 'ri-flag-line', subtext: 'Default 8.25% exclusive' },
-    { label: 'European Union VAT (Inclusive)', value: 'EU_VAT', icon: 'ri-flag-line', subtext: 'Default 10.0% inclusive' },
-    { label: 'Custom Flat Tax', value: 'CUSTOM', icon: 'ri-percent-line', subtext: 'Single flat rate' }
+    { label: 'India GST (CGST 2.5% + SGST 2.5% = 5%)', value: 'INDIA_GST', icon: 'ri-flag-line', subtext: 'Standard restaurant GST regime' },
+    { label: 'Composite Flat GST (5.0%)', value: 'CUSTOM', icon: 'ri-percent-line', subtext: 'Single flat composite rate' }
   ];
 
   // Form editable copies
@@ -26,7 +24,7 @@ export class AdminComponent implements OnInit {
   gstin: string = '';
   upiVpa: string = '';
   upiPayee: string = '';
-  taxRegime: 'INDIA_GST' | 'US_SALES_TAX' | 'EU_VAT' | 'CUSTOM' = 'INDIA_GST';
+  taxRegime: 'INDIA_GST' | 'CUSTOM' = 'INDIA_GST';
   isTaxInclusive: boolean = false;
   cgstPct: number = 2.5;
   sgstPct: number = 2.5;
@@ -73,15 +71,7 @@ export class AdminComponent implements OnInit {
       this.cgstPct = 2.5;
       this.sgstPct = 2.5;
       this.isTaxInclusive = false;
-    } else if (this.taxRegime === 'US_SALES_TAX') {
-      this.cgstPct = 8.25;
-      this.sgstPct = 0;
-      this.isTaxInclusive = false;
-    } else if (this.taxRegime === 'EU_VAT') {
-      this.cgstPct = 10.0;
-      this.sgstPct = 0;
-      this.isTaxInclusive = true;
-    } else if (this.taxRegime === 'CUSTOM') {
+    } else {
       this.cgstPct = 5.0;
       this.sgstPct = 0;
       this.isTaxInclusive = false;

@@ -12,7 +12,7 @@ export class CrmComponent implements OnInit {
   customers: Customer[] = [];
   loyaltyTxns: LoyaltyTransaction[] = [];
   feedbackList: CustomerFeedback[] = [];
-  activeTab: 'customers' | 'loyalty' | 'feedback' = 'customers';
+  activeTab: 'customers' = 'customers';
 
   showCustomerModal = false;
   searchQuery = '';
@@ -70,7 +70,7 @@ export class CrmComponent implements OnInit {
     this.newName = '';
     this.newPhone = '';
     this.newEmail = '';
-    this.toast.success('Customer enrolled with 50 Welcome Loyalty Points & referral code!', 'Customer Added');
+    this.toast.success('Customer profile saved successfully!', 'Customer Added');
   }
 
   getTierClass(tier: string): string {

@@ -50,10 +50,10 @@ export class InventoryComponent implements OnInit {
   ];
 
   wasteReasonOptions = [
-    { label: 'Spoilage / Expired Date', value: 'EXPIRED', icon: 'ri-time-line' },
-    { label: 'Spillage / Cooking Error', value: 'PREP_SPILL', icon: 'ri-drop-line' },
-    { label: 'Storage Moisture / Pest Damage', value: 'STORAGE_DAMAGE', icon: 'ri-archive-line' },
-    { label: 'Quality Control Rejection', value: 'QUALITY_REJECT', icon: 'ri-close-circle-line' }
+    { label: 'Spoiled / Stale Stock', value: 'EXPIRED', icon: 'ri-time-line' },
+    { label: 'Cooking Spill / Burnt Loss', value: 'PREP_SPILL', icon: 'ri-drop-line' },
+    { label: 'Stock Damage / Broken Pack', value: 'STORAGE_DAMAGE', icon: 'ri-archive-line' },
+    { label: 'Physical Count Adjustment', value: 'QUALITY_REJECT', icon: 'ri-equalizer-line' }
   ];
 
   get supplierOptions() {
