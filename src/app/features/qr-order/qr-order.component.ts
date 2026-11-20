@@ -79,9 +79,18 @@ export class QrOrderComponent implements OnInit {
 
     this.route.queryParams.subscribe(params => {
       const orgId = params['orgId'] || params['org'];
-      // Only switch active tenant for unauthenticated guests, protecting logged-in staff
-      if (orgId && !this.authService.isAuthenticated) {
-        this.tenantService.switchTenant(orgId);
+      if (orgId) {
+        try {
+          sessionStorage.setItem('orderrestro_qr_session_org_id', orgId);
+        } catch (e) {}
+
+        // For unauthenticated guests on QR order, switch in-memory ONLY
+        // (Do NOT mutate persistent POS master terminal localStorage)
+        if (!this.authService.isAuthenticated) {
+          this.tenantService.switchTenant(orgId, false);
+          this.menuService.loadMenuForOrg(orgId);
+          this.tableService.loadTablesForOrg(orgId);
+        }
       }
       const tableParam = params['tableId'] || params['table'];
       if (tableParam) {

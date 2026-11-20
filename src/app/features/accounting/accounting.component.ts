@@ -5,6 +5,7 @@ import { OrderService } from '../../core/services/order.service';
 import { InventoryService } from '../../core/services/inventory.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { CashClosing, Expense, MonthlyBudget, ProfitAndLossSummary, TaxReportSummary } from '../../core/models/finance.model';
 import { Order } from '../../core/models/order.model';
 import { InventoryItem } from '../../core/models/inventory.model';
@@ -95,6 +96,7 @@ export class AccountingComponent implements OnInit, OnDestroy {
     public orderService: OrderService,
     public inventoryService: InventoryService,
     public tenantService: TenantService,
+    public authService: AuthService,
     private toast: ToastService
   ) {}
 
@@ -673,13 +675,16 @@ export class AccountingComponent implements OnInit, OnDestroy {
   }
 
   recordCashClose(): void {
+    const user = this.authService.currentUser;
+    const closedByName = user?.full_name || 'Store Manager';
     const closing = this.financeService.recordNightlyCashClose(
       this.openingDrawer,
       this.cashSales,
       this.pettyExpenses,
       this.cashRefunds,
       this.actualCountedCash,
-      this.cashCloseNotes
+      this.cashCloseNotes,
+      closedByName
     );
 
     const sign = closing.variance_amount >= 0 ? '+' : '';

@@ -22,6 +22,9 @@ export class InventoryService {
   private get STORAGE_KEY_WASTE(): string {
     return `orderrestro_waste_logs_${this.currentOrgId}`;
   }
+  private get STORAGE_KEY_RECIPES(): string {
+    return `orderrestro_recipes_${this.currentOrgId}`;
+  }
 
   private defaultIngredients: InventoryItem[] = [];
   private defaultWasteLogs: WasteLog[] = [];
@@ -75,9 +78,17 @@ export class InventoryService {
       } else {
         this.wasteLogsSubject.next([]);
       }
+
+      const savedRecipes = localStorage.getItem(this.STORAGE_KEY_RECIPES);
+      if (savedRecipes) {
+        this.recipesSubject.next(JSON.parse(savedRecipes));
+      } else {
+        this.recipesSubject.next([]);
+      }
     } catch {
       this.ingredientsSubject.next([]);
       this.wasteLogsSubject.next([]);
+      this.recipesSubject.next([]);
     }
   }
 
@@ -95,6 +106,13 @@ export class InventoryService {
         this.wasteLogsSubject.next(JSON.parse(savedWaste));
       } else {
         this.wasteLogsSubject.next([]);
+      }
+
+      const savedRecipes = localStorage.getItem(`orderrestro_recipes_${orgId}`);
+      if (savedRecipes) {
+        this.recipesSubject.next(JSON.parse(savedRecipes));
+      } else {
+        this.recipesSubject.next([]);
       }
     } catch (e) {}
 
@@ -428,39 +446,76 @@ export class InventoryService {
   }
 
   /**
-   * Automatically deducts ingredient/item stock when an order is settled at the POS till
+   * Automatically deducts ingredient/item stock when an order is settled at the POS till.
+   * Checks both Recipe Bill of Materials (BOM ingredients) and direct retail item stock.
    */
   deductStockForOrderItems(orderItems: { menu_item_id?: string; name: string; quantity: number }[]): void {
     if (!orderItems || orderItems.length === 0) return;
 
     let hasChanges = false;
     const currentItems = this.ingredients.map(i => ({ ...i }));
+    const recipes = this.recipesSubject.value || [];
 
     for (const orderItem of orderItems) {
-      const target = currentItems.find(i =>
-        (orderItem.menu_item_id && i.id === orderItem.menu_item_id) ||
-        i.name.toLowerCase() === orderItem.name.toLowerCase()
+      const soldQty = Number(orderItem.quantity) || 1;
+
+      // 1. Check if there is a Recipe configured for this menu dish
+      const recipe = recipes.find(r =>
+        (orderItem.menu_item_id && r.menu_item_id === orderItem.menu_item_id) ||
+        (r.menu_item_name && r.menu_item_name.toLowerCase() === orderItem.name.toLowerCase())
       );
 
-      if (target) {
-        const qtyToDeduct = Number(orderItem.quantity) || 1;
-        const remaining = Math.max(0, Math.round((target.current_stock - qtyToDeduct) * 100) / 100);
-        target.current_stock = remaining;
-        target.is_low_stock = remaining <= target.reorder_level;
-        hasChanges = true;
+      if (recipe && recipe.ingredients && recipe.ingredients.length > 0) {
+        const yieldQty = recipe.yield_quantity || 1;
+        for (const ing of recipe.ingredients) {
+          const target = currentItems.find(i =>
+            i.id === ing.inventory_item_id ||
+            (ing.inventory_item_name && i.name.toLowerCase() === ing.inventory_item_name.toLowerCase())
+          );
+          if (target) {
+            const requiredPerPortion = Number(ing.quantity_required) || 0;
+            const totalDeduct = (requiredPerPortion * soldQty) / yieldQty;
+            const remaining = Math.max(0, Math.round((target.current_stock - totalDeduct) * 100) / 100);
+            target.current_stock = remaining;
+            target.is_low_stock = remaining <= target.reorder_level;
+            hasChanges = true;
 
-        if (this.supabaseService.client) {
-          this.supabaseService.from('inventory_items').update({
-            current_stock: remaining,
-            is_low_stock: target.is_low_stock
-          }).eq('id', target.id).then();
+            if (this.supabaseService.client) {
+              this.supabaseService.from('inventory_items').update({
+                current_stock: remaining,
+                is_low_stock: target.is_low_stock
+              }).eq('id', target.id).then();
+            }
+          }
+        }
+      } else {
+        // 2. Direct retail item fallback (e.g. Canned Drinks, Mineral Water, direct inventory item)
+        const target = currentItems.find(i =>
+          (orderItem.menu_item_id && i.id === orderItem.menu_item_id) ||
+          i.name.toLowerCase() === orderItem.name.toLowerCase() ||
+          i.name.toLowerCase().includes(orderItem.name.toLowerCase()) ||
+          orderItem.name.toLowerCase().includes(i.name.toLowerCase())
+        );
+
+        if (target) {
+          const remaining = Math.max(0, Math.round((target.current_stock - soldQty) * 100) / 100);
+          target.current_stock = remaining;
+          target.is_low_stock = remaining <= target.reorder_level;
+          hasChanges = true;
+
+          if (this.supabaseService.client) {
+            this.supabaseService.from('inventory_items').update({
+              current_stock: remaining,
+              is_low_stock: target.is_low_stock
+            }).eq('id', target.id).then();
+          }
         }
       }
     }
 
     if (hasChanges) {
       this.setIngredientsState(currentItems);
-      console.log('📦 [Inventory] Stock automatically deducted for settled order items.');
+      console.log('📦 [Inventory] Stock automatically deducted for settled order items (Recipe BOM + Direct Items).');
     }
   }
 

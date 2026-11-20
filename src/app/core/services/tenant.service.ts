@@ -297,7 +297,7 @@ export class TenantService {
   /**
    * Switches the active restaurant/organization across the entire application
    */
-  switchTenant(orgId: string): void {
+  switchTenant(orgId: string, persist: boolean = true): void {
     const found = this.tenantsSubject.value.find(c => c.id === orgId) || this.defaultTenants[0];
 
     const newOrg: Organization = {
@@ -362,9 +362,11 @@ export class TenantService {
     this.branchesSubject.next(branchesWithFlags);
     this.activeBranchSubject.next(branchesWithFlags[0]);
 
-    try {
-      localStorage.setItem(this.STORAGE_KEY_ACTIVE_ORG, orgId);
-    } catch {}
+    if (persist) {
+      try {
+        localStorage.setItem(this.STORAGE_KEY_ACTIVE_ORG, orgId);
+      } catch {}
+    }
   }
 
   updateBranchSettings(updated: Partial<Branch>): void {

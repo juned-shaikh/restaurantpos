@@ -5,6 +5,7 @@ import { Order } from '../models/order.model';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
 import { StaffService } from './staff.service';
+import { AuthService } from './auth.service';
 
 export interface MonthlyOverheads {
   store_rent: number;
@@ -64,7 +65,8 @@ export class FinanceService {
   constructor(
     private supabaseService: SupabaseService,
     private tenantService: TenantService,
-    private staffService: StaffService
+    private staffService: StaffService,
+    private authService: AuthService
   ) {
     this.initInitialState();
     this.recalculateBudgets();
@@ -357,7 +359,8 @@ export class FinanceService {
     pettyExpenses: number,
     cashRefunds: number,
     actualCountedCash: number,
-    notes?: string
+    notes?: string,
+    closedByName?: string
   ): CashClosing {
     const opening = Number(openingDrawer) || 0;
     const sales = Number(cashSales) || 0;
@@ -370,12 +373,14 @@ export class FinanceService {
 
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
     const branchId = this.tenantService.activeBranch?.id || 'branch-01';
+    const activeUser = this.authService?.currentUser;
+    const resolverName = closedByName?.trim() || activeUser?.full_name || activeUser?.email || 'Store Manager';
 
     const closing: CashClosing = {
       id: `cc-${Date.now()}`,
       organization_id: orgId,
       branch_id: branchId,
-      closed_by_name: 'Current Cashier / Manager',
+      closed_by_name: resolverName,
       closing_date: new Date().toISOString().split('T')[0],
       opening_drawer_cash: opening,
       cash_sales_collected: sales,

@@ -367,6 +367,31 @@ export class OrderService {
     return this.activeOrders.find(o => o.table_id === tableId && !o.is_settled);
   }
 
+  private generateNextOrderNumber(orgId: string): string {
+    const today = new Date().toISOString().slice(0, 10);
+    const seqKey = `orderrestro_seq_${orgId}_${today}`;
+    let lastSeq = 0;
+    try {
+      const stored = localStorage.getItem(seqKey);
+      if (stored) {
+        lastSeq = parseInt(stored, 10) || 0;
+      }
+    } catch (e) {}
+
+    // Find highest order number among all loaded active orders
+    const activeMax = this.activeOrders.reduce((max, o) => {
+      const num = parseInt(o.order_number, 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 100);
+
+    const nextNum = Math.max(lastSeq + 1, activeMax + 1, 101);
+    try {
+      localStorage.setItem(seqKey, String(nextNum));
+    } catch (e) {}
+
+    return String(nextNum);
+  }
+
   /**
    * Places a new order or automatically merges additional items into an existing running table bill
    */
@@ -387,8 +412,13 @@ export class OrderService {
       }
     }
 
+    const branch = this.tenantService.activeBranch;
+    const cgstPct = typeof branch?.default_cgst_pct === 'number' ? branch.default_cgst_pct : 2.5;
+    const sgstPct = typeof branch?.default_sgst_pct === 'number' ? branch.default_sgst_pct : 2.5;
+    const isInclusive = branch?.is_tax_inclusive === true;
+
     const rawSubtotal = items.reduce((sum, item) => sum + item.total_price, 0);
-    const taxRes = this.taxCalculator.calculateTax(rawSubtotal, discountPct);
+    const taxRes = this.taxCalculator.calculateTax(rawSubtotal, discountPct, cgstPct, sgstPct, isInclusive);
 
     // Ensure all items in initial order have unique IDs and are stamped as sent to kitchen
     const stampedItems: OrderItem[] = items.map((it, idx) => ({
@@ -397,11 +427,12 @@ export class OrderService {
       is_sent_to_kitchen: true
     }));
 
-    const orderNumber = `${100 + this.activeOrders.length + 1}`;
+    const orgId = this.tenantService.currentOrg?.id || 'org-default';
+    const orderNumber = this.generateNextOrderNumber(orgId);
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
-      organization_id: this.tenantService.currentOrg?.id || 'org-default',
-      branch_id: 'branch-01',
+      organization_id: orgId,
+      branch_id: branch?.id || 'branch-01',
       order_number: orderNumber,
       order_type: orderType,
       table_id: tableId,
@@ -493,9 +524,14 @@ export class OrderService {
       return existing;
     }
 
-    // Recalculate consolidated bill
+    // Recalculate consolidated bill with branch tax settings
+    const branch = this.tenantService.activeBranch;
+    const cgstPct = typeof branch?.default_cgst_pct === 'number' ? branch.default_cgst_pct : 2.5;
+    const sgstPct = typeof branch?.default_sgst_pct === 'number' ? branch.default_sgst_pct : 2.5;
+    const isInclusive = branch?.is_tax_inclusive === true;
+
     const rawSubtotal = mergedItems.reduce((sum, item) => sum + item.total_price, 0);
-    const taxRes = this.taxCalculator.calculateTax(rawSubtotal, existing.discount_pct || 0);
+    const taxRes = this.taxCalculator.calculateTax(rawSubtotal, existing.discount_pct || 0, cgstPct, sgstPct, isInclusive);
     const currentRound = (existing.kot_count || 1) + 1;
 
     const updatedOrder: Order = {

@@ -373,7 +373,11 @@ export class OrdersComponent implements OnInit, OnDestroy {
   }
 
   get taxDetails() {
-    return this.taxCalculator.calculateTax(this.cartSubtotal, this.discountPct);
+    const branch = this.tenantService.activeBranch;
+    const cgstPct = typeof branch?.default_cgst_pct === 'number' ? branch.default_cgst_pct : 2.5;
+    const sgstPct = typeof branch?.default_sgst_pct === 'number' ? branch.default_sgst_pct : 2.5;
+    const isInclusive = branch?.is_tax_inclusive === true;
+    return this.taxCalculator.calculateTax(this.cartSubtotal, this.discountPct, cgstPct, sgstPct, isInclusive);
   }
 
   get grandTotal(): number {
@@ -459,7 +463,11 @@ export class OrdersComponent implements OnInit, OnDestroy {
     if (existing) {
       proformaOrder = existing;
     } else {
-      const taxRes = this.taxCalculator.calculateTax(this.cartSubtotal, this.discountPct);
+      const branch = this.tenantService.activeBranch;
+      const cgstPct = typeof branch?.default_cgst_pct === 'number' ? branch.default_cgst_pct : 2.5;
+      const sgstPct = typeof branch?.default_sgst_pct === 'number' ? branch.default_sgst_pct : 2.5;
+      const isInclusive = branch?.is_tax_inclusive === true;
+      const taxRes = this.taxCalculator.calculateTax(this.cartSubtotal, this.discountPct, cgstPct, sgstPct, isInclusive);
       proformaOrder = {
         id: `proforma-${Date.now()}`,
         organization_id: this.tenantService.currentOrg?.id || 'org-default',
