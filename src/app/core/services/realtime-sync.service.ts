@@ -30,7 +30,18 @@ export class RealtimeSyncService {
 
     const branchId = this.tenantService.activeBranch.id;
 
-    // 1. Listen for new KOT Tickets in Kitchen
+    // 1. Listen for new Orders & KOT Tickets in Kitchen
+    this.supabaseService.subscribeToTableChanges(
+      'orders',
+      (payload: any) => {
+        if (payload.eventType === 'INSERT' && (payload.new?.status === 'IN_KITCHEN' || payload.new?.status === 'OPEN')) {
+          console.log('⚡ [Realtime] New KOT Order received in kitchen:', payload.new.order_number);
+          this.soundService.playNewKotChime();
+        }
+      },
+      `branch_id=eq.${branchId}`
+    );
+
     this.supabaseService.subscribeToTableChanges(
       'kot_tickets',
       (payload: any) => {

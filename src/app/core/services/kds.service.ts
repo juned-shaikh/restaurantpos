@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { KotTicket, KitchenStation, KdsPerformanceMetric } from '../models/kds.model';
+import { KotTicket, KitchenStation, KdsPerformanceMetric, KotStatus } from '../models/kds.model';
 import { SoundService } from './sound.service';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
@@ -91,23 +91,83 @@ export class KdsService {
     } catch (e) {}
   }
 
+  private mapOrderToKotTicket(order: any): KotTicket {
+    const rawItems = Array.isArray(order.items) ? order.items : [];
+    const kitchenItems = rawItems.filter((i: any) => i.is_sent_to_kitchen !== false);
+    const itemsToUse = kitchenItems.length > 0 ? kitchenItems : rawItems;
+
+    let ticketStatus: KotStatus = 'PENDING';
+    if (order.status === 'PREPARING') ticketStatus = 'PREPARING';
+    else if (order.status === 'READY') ticketStatus = 'READY';
+    else if (order.status === 'SERVED' || order.status === 'SETTLED' || order.status === 'CANCELLED') ticketStatus = 'BUMPED';
+
+    return {
+      id: order.id,
+      organization_id: order.organization_id || this.currentOrgId,
+      branch_id: order.branch_id || this.currentBranchId,
+      order_id: order.id,
+      order_number: order.order_number || String(order.id).slice(-4),
+      kot_number: `KOT-${order.order_number || String(order.id).slice(-4)}`,
+      table_number: order.table_number || (order.order_type === 'TAKEAWAY' ? 'Takeaway' : 'Counter'),
+      order_type: order.order_type || 'DINE_IN',
+      status: ticketStatus,
+      items: itemsToUse.map((it: any, idx: number) => ({
+        id: it.id || `kot-item-${idx}`,
+        kot_ticket_id: order.id,
+        order_item_id: it.id || `oi-${idx}`,
+        menu_item_id: it.menu_item_id || '',
+        name: it.name || 'Dish',
+        quantity: Number(it.quantity) || 1,
+        modifiers_summary: it.modifiers?.map((m: any) => m.name).join(', ') || it.modifiers_summary || '',
+        is_struck_through: !!it.is_struck_through,
+        notes: it.notes || '',
+        created_at: order.created_at || new Date().toISOString()
+      })),
+      created_at: order.created_at || new Date().toISOString()
+    };
+  }
+
   async loadTicketsForOrg(orgId: string): Promise<void> {
     this.initInitialState();
     if (!this.supabaseService.client) return;
 
     try {
-      const { data, error } = await this.supabaseService
+      // 1. Fetch active kitchen orders directly from Supabase 'orders' table
+      const { data: ordersData, error: ordersErr } = await this.supabaseService
+        .from('orders')
+        .select('*')
+        .eq('organization_id', orgId)
+        .in('status', ['IN_KITCHEN', 'PREPARING', 'READY'])
+        .order('created_at', { ascending: false });
+
+      if (!ordersErr && ordersData && ordersData.length > 0) {
+        console.log(`☁️ [KdsService] Loaded ${ordersData.length} live kitchen orders from Supabase orders table.`);
+        const orderTickets = ordersData.map((o: any) => this.mapOrderToKotTicket(o));
+        const orderIds = new Set(orderTickets.map(t => t.order_id || t.id));
+        const remainingLocal = this.ticketsSubject.value.filter(t => !orderIds.has(t.order_id) && !orderIds.has(t.id));
+        this.ticketsSubject.next([...orderTickets, ...remainingLocal]);
+        this.persistTicketsLocally();
+      }
+
+      // 2. Also try fetching from kot_tickets if it exists (legacy / future schema)
+      const { data: kotData, error: kotErr } = await this.supabaseService
         .from('kot_tickets')
         .select('*')
         .eq('organization_id', orgId)
         .neq('status', 'BUMPED')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        this.ticketsSubject.next(data);
-        this.persistTicketsLocally();
+      if (!kotErr && kotData && kotData.length > 0) {
+        const existingIds = new Set(this.ticketsSubject.value.map(t => t.id));
+        const newKot = kotData.filter((t: any) => !existingIds.has(t.id));
+        if (newKot.length > 0) {
+          this.ticketsSubject.next([...this.ticketsSubject.value, ...newKot]);
+          this.persistTicketsLocally();
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('⚠️ [KdsService] Notice loading kitchen tickets:', e);
+    }
   }
 
   private async initSupabaseSync(): Promise<void> {
@@ -118,32 +178,58 @@ export class KdsService {
         return;
       }
 
-      const orgId = this.tenantService.currentOrg?.id;
+      const orgId = this.tenantService.currentOrg?.id || this.currentOrgId;
+      await this.loadTicketsForOrg(orgId);
 
-      // Fetch active tickets (exclude bumped ones)
-      let query = this.supabaseService
-        .from('kot_tickets')
-        .select('*')
-        .neq('status', 'BUMPED');
-      
-      if (orgId) {
-        query = query.eq('organization_id', orgId);
-      }
+      // Realtime subscription on 'orders' table (Cross-terminal Live Sync from Waiter to Chef!)
+      this.supabaseService.subscribeToTableChanges('orders', (payload: any) => {
+        const order = payload.new;
+        if (!order) return;
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+        const currentOrg = this.tenantService.currentOrg?.id || this.currentOrgId;
+        if (order.organization_id && order.organization_id !== currentOrg) {
+          return;
+        }
 
-      if (!error && data && data.length > 0) {
-        console.log(`☁️ [KdsService] Loaded ${data.length} active KOT tickets from Supabase.`);
-        this.ticketsSubject.next(data);
-        this.persistTicketsLocally();
-      }
+        if (payload.eventType === 'INSERT') {
+          if (['IN_KITCHEN', 'PREPARING', 'READY', 'OPEN'].includes(order.status)) {
+            const ticket = this.mapOrderToKotTicket(order);
+            const exists = this.ticketsSubject.value.some(t => t.id === ticket.id || t.order_id === ticket.order_id);
+            if (!exists) {
+              console.log('⚡ [KDS Realtime] New live order received for kitchen:', order.order_number);
+              this.ticketsSubject.next([ticket, ...this.ticketsSubject.value]);
+              this.persistTicketsLocally();
+              this.soundService.playNewKotChime();
+            }
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          if (['SETTLED', 'CANCELLED', 'SERVED'].includes(order.status)) {
+            // Remove bumped / served / settled order from kitchen Kanban
+            this.ticketsSubject.next(this.ticketsSubject.value.filter(t => t.id !== order.id && t.order_id !== order.id));
+            this.persistTicketsLocally();
+          } else if (['IN_KITCHEN', 'PREPARING', 'READY'].includes(order.status)) {
+            const updatedTicket = this.mapOrderToKotTicket(order);
+            const exists = this.ticketsSubject.value.some(t => t.id === order.id || t.order_id === order.id);
+            if (exists) {
+              this.ticketsSubject.next(this.ticketsSubject.value.map(t => (t.id === order.id || t.order_id === order.id) ? updatedTicket : t));
+            } else {
+              this.ticketsSubject.next([updatedTicket, ...this.ticketsSubject.value]);
+              this.soundService.playNewKotChime();
+            }
+            this.persistTicketsLocally();
+          }
+        } else if (payload.eventType === 'DELETE' && payload.old?.id) {
+          this.ticketsSubject.next(this.ticketsSubject.value.filter(t => t.id !== payload.old.id && t.order_id !== payload.old.id));
+          this.persistTicketsLocally();
+        }
+      });
 
-      // Realtime subscription
+      // Also listen to 'kot_tickets' in case it's created or used
       this.supabaseService.subscribeToTableChanges('kot_tickets', (payload: any) => {
         const ticket = payload.new as KotTicket;
         if (!ticket) return;
 
-        const currentOrg = this.tenantService.currentOrg?.id;
+        const currentOrg = this.tenantService.currentOrg?.id || this.currentOrgId;
         if (currentOrg && ticket.organization_id && ticket.organization_id !== currentOrg) {
           return;
         }
@@ -203,6 +289,19 @@ export class KdsService {
     } catch (e) {}
   }
 
+  private async updateOrderInSupabaseKitchen(orderId: string, status: string, items?: any[]): Promise<void> {
+    const client = this.supabaseService.client;
+    if (!client) return;
+    try {
+      const payload: any = { status };
+      if (items) {
+        payload.items = items;
+      }
+      await this.supabaseService.from('orders').update(payload).eq('id', orderId);
+      console.log(`☁️ [KdsService] Updated order ${orderId} status to ${status} in Supabase orders.`);
+    } catch (e) {}
+  }
+
   get tickets(): KotTicket[] {
     return this.ticketsSubject.value;
   }
@@ -210,12 +309,23 @@ export class KdsService {
   createTicket(ticket: Omit<KotTicket, 'id' | 'created_at'>): void {
     const newTicket: KotTicket = {
       ...ticket,
-      id: `kot-${Date.now()}`,
+      id: ticket.order_id || `kot-${Date.now()}`,
       organization_id: ticket.organization_id || this.currentOrgId,
       branch_id: ticket.branch_id || this.currentBranchId,
       created_at: new Date().toISOString()
     };
-    this.ticketsSubject.next([newTicket, ...this.tickets]);
+    
+    // Check if ticket already exists
+    const existing = this.ticketsSubject.value;
+    const idx = existing.findIndex(t => t.id === newTicket.id || (t.order_id && t.order_id === newTicket.order_id));
+    if (idx >= 0) {
+      const updated = [...existing];
+      updated[idx] = { ...updated[idx], ...newTicket };
+      this.ticketsSubject.next(updated);
+    } else {
+      this.ticketsSubject.next([newTicket, ...existing]);
+    }
+    
     this.persistTicketsLocally();
     this.saveTicketToSupabase(newTicket);
     this.soundService.playNewKotChime();
@@ -224,7 +334,7 @@ export class KdsService {
   toggleItemStrikeThrough(ticketId: string, itemId: string): void {
     let updatedTicket: KotTicket | undefined;
     const updated = this.tickets.map(t => {
-      if (t.id === ticketId) {
+      if (t.id === ticketId || t.order_id === ticketId) {
         updatedTicket = {
           ...t,
           items: t.items.map(item => item.id === itemId ? { ...item, is_struck_through: !item.is_struck_through } : item)
@@ -237,13 +347,24 @@ export class KdsService {
     this.persistTicketsLocally();
     if (updatedTicket) {
       this.updateTicketInSupabase(ticketId, { items: updatedTicket.items });
+      const targetOrderId = updatedTicket.order_id || updatedTicket.id;
+      this.updateOrderInSupabaseKitchen(
+        targetOrderId,
+        updatedTicket.status === 'READY' ? 'READY' : (updatedTicket.status === 'PREPARING' ? 'PREPARING' : 'IN_KITCHEN'),
+        updatedTicket.items
+      );
     }
   }
 
   advanceTicketStatus(ticketId: string): void {
     let updatedFields: Partial<KotTicket> = {};
+    let targetOrderId: string = ticketId;
+    let targetItems: any[] | undefined;
+
     const updated = this.tickets.map(t => {
-      if (t.id === ticketId) {
+      if (t.id === ticketId || t.order_id === ticketId) {
+        targetOrderId = t.order_id || t.id;
+        targetItems = t.items;
         if (t.status === 'PENDING') {
           updatedFields = { status: 'PREPARING' as const, prep_started_at: new Date().toISOString() };
           return { ...t, ...updatedFields };
@@ -257,18 +378,28 @@ export class KdsService {
       }
       return t;
     });
+
     this.ticketsSubject.next(updated);
     this.persistTicketsLocally();
+
     if (Object.keys(updatedFields).length > 0) {
       this.updateTicketInSupabase(ticketId, updatedFields);
+      const dbStatus = updatedFields.status === 'READY' ? 'READY' : (updatedFields.status === 'PREPARING' ? 'PREPARING' : 'SERVED');
+      this.updateOrderInSupabaseKitchen(targetOrderId, dbStatus);
     }
   }
 
   bumpTicket(ticketId: string): void {
-    const updated = this.tickets.map(t => t.id === ticketId ? { ...t, status: 'BUMPED' as const, bumped_at: new Date().toISOString() } : t);
+    let targetOrderId = ticketId;
+    const ticket = this.tickets.find(t => t.id === ticketId || t.order_id === ticketId);
+    if (ticket) targetOrderId = ticket.order_id || ticket.id;
+
+    const updated = this.tickets.map(t => (t.id === ticketId || t.order_id === ticketId) ? { ...t, status: 'BUMPED' as const, bumped_at: new Date().toISOString() } : t);
     this.ticketsSubject.next(updated.filter(t => t.status !== 'BUMPED'));
     this.persistTicketsLocally();
+
     this.updateTicketInSupabase(ticketId, { status: 'BUMPED', bumped_at: new Date().toISOString() });
+    this.updateOrderInSupabaseKitchen(targetOrderId, 'SERVED');
   }
 
   getStationPerformanceMetrics(): KdsPerformanceMetric[] {

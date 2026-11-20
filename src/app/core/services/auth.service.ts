@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AppUser, UserRole } from '../models/auth.model';
 import { SupabaseService } from './supabase.service';
+import { TenantService } from './tenant.service';
 
 interface SessionEnvelope {
   user: AppUser;
@@ -39,7 +40,10 @@ export class AuthService {
   currentUser$: Observable<AppUser | null> = this.currentUserSubject.asObservable();
   isAuthenticated$: Observable<boolean> = this.isAuthenticatedSubject.asObservable();
 
-  constructor(private supabaseService: SupabaseService) {
+  constructor(
+    private supabaseService: SupabaseService,
+    private tenantService: TenantService
+  ) {
     this.restoreSession();
   }
 
@@ -119,6 +123,11 @@ export class AuthService {
           if (envelope.signature === expectedSig && envelope.user.is_active) {
             this.currentUserSubject.next(envelope.user);
             this.isAuthenticatedSubject.next(true);
+            if (envelope.user.organization_id) {
+              try {
+                this.tenantService?.switchTenant(envelope.user.organization_id);
+              } catch (e) {}
+            }
             return;
           }
         }
@@ -420,6 +429,13 @@ export class AuthService {
   private setSessionUser(user: AppUser): void {
     this.currentUserSubject.next(user);
     this.isAuthenticatedSubject.next(true);
+
+    if (user.organization_id) {
+      try {
+        localStorage.setItem('orderrestro_active_org_id_v2', user.organization_id);
+        this.tenantService?.switchTenant(user.organization_id);
+      } catch (e) {}
+    }
 
     try {
       const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days session
