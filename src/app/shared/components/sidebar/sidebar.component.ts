@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { TenantService } from '../../../core/services/tenant.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UiService } from '../../../core/services/ui.service';
@@ -44,7 +45,8 @@ export class SidebarComponent implements OnInit {
   constructor(
     public tenantService: TenantService,
     public authService: AuthService,
-    public uiService: UiService
+    public uiService: UiService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -95,5 +97,11 @@ export class SidebarComponent implements OnInit {
     if (window.innerWidth <= 900) {
       this.uiService.closeSidebar();
     }
+  }
+
+  lockTerminal(): void {
+    this.onNavClick();
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

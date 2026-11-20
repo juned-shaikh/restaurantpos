@@ -274,19 +274,49 @@ export class StaffService {
     return (user.manager_pin && user.manager_pin === p) || (user.pin && user.pin === p) || p === '1234';
   }
 
-  addStaffMember(staff: Partial<AppUser> & { pin?: string; monthly_salary?: number }): AppUser {
+  async addStaffMember(staff: Partial<AppUser> & { pin?: string; monthly_salary?: number }): Promise<{ success: boolean; user?: AppUser; message?: string }> {
+    const cleanPhone = (staff.phone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return { success: false, message: 'Please enter a valid 10-digit mobile number.' };
+    }
+
+    // 1. Strict duplicate check in local staff roster
+    const existingLocally = this.staffMembersSubject.value.find(s => (s.phone || '').replace(/\D/g, '') === cleanPhone);
+    if (existingLocally) {
+      return { success: false, message: `A staff member (${existingLocally.full_name}) with mobile number ${cleanPhone} already exists in this restaurant!` };
+    }
+
+    // 2. Strict duplicate check in Supabase Cloud database
+    const client = this.supabaseService.client;
+    if (client) {
+      try {
+        const { data: dupUsers } = await this.supabaseService
+          .from('app_users')
+          .select('id, full_name, phone, role')
+          .eq('phone', cleanPhone)
+          .limit(1);
+
+        if (dupUsers && dupUsers.length > 0) {
+          const dup = dupUsers[0];
+          return { success: false, message: `Mobile number ${cleanPhone} is already registered to ${dup.full_name} (${dup.role})!` };
+        }
+      } catch (err) {
+        console.warn('Duplicate check notice:', err);
+      }
+    }
+
     const assignedPin = staff.manager_pin || staff.pin || '1234';
     const baseSalary = Number(staff.monthly_salary) || (staff.hourly_rate ? staff.hourly_rate * 8 * 26 : 16000);
-    const cleanPhone = (staff.phone || '').replace(/[\s\-\(\)\+]/g, '');
-    const validEmail = staff.email && staff.email.trim() ? staff.email.trim() : (cleanPhone ? `${cleanPhone}@pos.local` : `staff-${Date.now()}@pos.local`);
+    const validEmail = staff.email && staff.email.trim() ? staff.email.trim() : `${cleanPhone}@pos.local`;
+    const targetOrgId = staff.organization_id || this.currentOrgId;
 
     const newUser: AppUser = {
       id: `staff-${Date.now()}`,
-      organization_id: staff.organization_id || this.currentOrgId || 'org-default',
+      organization_id: targetOrgId,
       branch_id: staff.branch_id || 'branch-01',
       full_name: staff.full_name || 'New Staff',
       role: staff.role || 'WAITER',
-      phone: staff.phone || '',
+      phone: cleanPhone,
       email: validEmail,
       manager_pin: assignedPin,
       pin: assignedPin,
@@ -339,29 +369,29 @@ export class StaffService {
     this.savePayrollToStorage(updatedPayroll);
 
     // Sync to Supabase cloud database
-    const client = this.supabaseService.client;
     if (client) {
-      this.supabaseService.from('app_users').upsert({
-        id: newUser.id,
-        organization_id: newUser.organization_id,
-        branch_id: newUser.branch_id,
-        full_name: newUser.full_name,
-        role: newUser.role,
-        email: newUser.email,
-        phone: newUser.phone,
-        password: assignedPin,
-        manager_pin: assignedPin,
-        hourly_rate: newUser.hourly_rate,
-        is_active: true,
-        created_at: newUser.created_at
-      }).then(() => {
+      try {
+        await this.supabaseService.from('app_users').upsert({
+          id: newUser.id,
+          organization_id: newUser.organization_id,
+          branch_id: newUser.branch_id,
+          full_name: newUser.full_name,
+          role: newUser.role,
+          email: newUser.email,
+          phone: newUser.phone,
+          password: assignedPin,
+          manager_pin: assignedPin,
+          hourly_rate: newUser.hourly_rate,
+          is_active: true,
+          created_at: newUser.created_at
+        });
         console.log('☁️ Staff enrolled in Supabase app_users table:', newUser.full_name);
-      }).catch((err: any) => {
+      } catch (err: any) {
         console.warn('⚠️ Supabase staff enrollment notice (offline cache active):', err);
-      });
+      }
     }
 
-    return newUser;
+    return { success: true, user: newUser };
   }
 
   clockInStaff(userId: string): AttendanceRecord {

@@ -180,7 +180,7 @@ export class AuthService {
                           (dbUser.password === pwd) ||
                           (dbUser.manager_pin === pwd) ||
                           (dbUser.pin === pwd) ||
-                          (pwd === '1234' && dbUser.role === 'WAITER');
+                          (!dbUser.password && !dbUser.manager_pin && !dbUser.pin && pwd === '1234');
 
           if (!isMatch) {
             return { success: false, message: 'Invalid credentials. Please enter a valid registered email and password or 4-digit PIN.' };
@@ -318,7 +318,7 @@ export class AuthService {
   /**
    * Fast Staff Numpad PIN Login
    */
-  loginWithPin(pin: string, staffName: string = 'Rahul (Barista)', role: UserRole = 'WAITER'): boolean {
+  loginWithPin(pin: string, staffName: string = 'Staff Member', role: UserRole = 'WAITER'): boolean {
     if (!pin || pin.length !== 4) return false;
 
     // PIN 9999 logs in directly as Super Admin Owner

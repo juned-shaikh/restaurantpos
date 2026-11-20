@@ -111,26 +111,45 @@ export class StaffComponent implements OnInit {
     this.showAddStaffModal = true;
   }
 
-  saveNewStaff(): void {
-    if (!this.newStaffName.trim() || !this.newStaffPhone.trim()) {
-      this.toast.warning('Please fill in Staff Name and Phone Number.');
+  onPhoneInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);
+    this.newStaffPhone = input.value;
+  }
+
+  async saveNewStaff(): Promise<void> {
+    const name = this.newStaffName.trim();
+    const phone = this.newStaffPhone.trim().replace(/\D/g, '');
+
+    if (!name) {
+      this.toast.warning('Please enter staff full name.');
+      return;
+    }
+
+    if (!phone || phone.length !== 10) {
+      this.toast.warning('Please enter a valid 10-digit mobile number.');
       return;
     }
 
     const pin = this.newStaffPin.trim() || '1234';
 
-    this.staffService.addStaffMember({
-      full_name: this.newStaffName.trim(),
+    const res = await this.staffService.addStaffMember({
+      full_name: name,
       role: this.newStaffRole,
-      phone: this.newStaffPhone.trim(),
+      phone: phone,
       manager_pin: pin,
       pin: pin,
       hourly_rate: 0,
       monthly_salary: Number(this.newStaffMonthlySalary) || 16000
     });
 
+    if (!res.success) {
+      this.toast.error(res.message || 'Staff enrollment failed. Mobile number already exists.', 'Duplicate Staff Error');
+      return;
+    }
+
     this.showAddStaffModal = false;
-    this.toast.success(`Staff member ${this.newStaffName} (${this.newStaffRole}) enrolled! PIN: ${pin}`, 'Staff Enrolled');
+    this.toast.success(`Staff member ${name} (${this.newStaffRole}) enrolled successfully! Mobile: ${phone} | PIN: ${pin}`, 'Staff Enrolled');
   }
 
   submitClockIn(): void {
