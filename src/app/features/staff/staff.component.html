@@ -33,7 +33,7 @@
   <div *ngIf="activeTab === 'payroll'" class="payroll-view">
     <!-- Top Controls: Month Selector & Mark All Paid -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-      <div style="display: flex; align-items: center; gap: 10px; width: 320px;">
+      <div style="display: flex; align-items: center; gap: 10px; max-width: 320px; width: 100%;">
         <span style="font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap;">Payroll Month:</span>
         <div style="flex: 1;">
           <app-custom-select

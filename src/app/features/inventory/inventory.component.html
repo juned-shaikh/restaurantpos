@@ -11,7 +11,7 @@
       <p class="page-subtitle">Ingredients, recipe costing, purchase orders, and waste</p>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 8px;">
+    <div class="header-actions">
       <button class="btn btn-secondary" (click)="inventoryService.refreshFromSupabase()" title="Sync from Supabase">
         <i class="ri-refresh-line"></i> Sync DB
       </button>
@@ -86,7 +86,7 @@
         <tbody>
           <tr *ngFor="let ing of filteredIngredients">
             <td>
-              <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="header-actions">
                 <strong style="color: #0F172A;">{{ ing.name }}</strong>
                 <span *ngIf="ing.current_stock <= ing.reorder_level" class="low-stock-pill">
                   ⚠ Low stock

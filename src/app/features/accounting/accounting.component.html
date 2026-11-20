@@ -123,7 +123,7 @@
     </div>
 
     <!-- Comparison Table -->
-    <div style="overflow-x: auto; margin-bottom: 24px;">
+    <div class="data-table-container" style="margin-bottom: 24px;">
       <table class="data-table">
         <thead>
           <tr style="background: #F8FAFC;">
@@ -349,30 +349,32 @@
       <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
         Audit trail of previous register closes and drawer variances.
       </p>
-      <table class="data-table" style="margin-top: 14px;">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Expected</th>
-            <th>Actual Counted</th>
-            <th>Variance</th>
-            <th>Closed By</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let c of cashClosings">
-            <td><b>{{ c.closing_date }}</b></td>
-            <td>₹{{ c.expected_drawer_cash | number:'1.2-2' }}</td>
-            <td>₹{{ c.actual_counted_cash | number:'1.2-2' }}</td>
-            <td>
-              <b [style.color]="c.variance_amount === 0 ? 'var(--success)' : 'var(--danger)'">
-                {{ c.variance_amount >= 0 ? '+' : '' }}₹{{ c.variance_amount | number:'1.2-2' }}
-              </b>
-            </td>
-            <td>{{ c.closed_by_name }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="data-table-container" style="margin-top: 14px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Expected</th>
+              <th>Actual Counted</th>
+              <th>Variance</th>
+              <th>Closed By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of cashClosings">
+              <td><b>{{ c.closing_date }}</b></td>
+              <td>₹{{ c.expected_drawer_cash | number:'1.2-2' }}</td>
+              <td>₹{{ c.actual_counted_cash | number:'1.2-2' }}</td>
+              <td>
+                <b [style.color]="c.variance_amount === 0 ? 'var(--success)' : 'var(--danger)'">
+                  {{ c.variance_amount >= 0 ? '+' : '' }}₹{{ c.variance_amount | number:'1.2-2' }}
+                </b>
+              </td>
+              <td>{{ c.closed_by_name }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -444,43 +446,45 @@
     </div>
 
     <!-- Expenses Table -->
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Category</th>
-          <th>Amount</th>
-          <th>Mode</th>
-          <th>Paid To</th>
-          <th>Description</th>
-          <th>Recorded By</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let exp of displayedExpenses">
-          <td><b>{{ exp.expense_date }}</b></td>
-          <td><span class="badge badge-bill-requested">{{ exp.category_name }}</span></td>
-          <td><b style="color: var(--danger); font-size: 14px;">₹{{ exp.amount | number:'1.2-2' }}</b></td>
-          <td>
-            <span class="badge-mode" [ngClass]="'mode-' + (exp.payment_mode || 'cash').toLowerCase()">
-              {{ exp.payment_mode }}
-            </span>
-          </td>
-          <td><b>{{ exp.paid_to }}</b></td>
-          <td style="color: var(--text-muted);">{{ exp.description }}</td>
-          <td>{{ exp.recorded_by_name || 'Cashier' }}</td>
-        </tr>
-        <tr *ngIf="displayedExpenses.length === 0">
-          <td colspan="7" style="text-align: center; padding: 24px; color: #64748B;">
-            <i class="ri-inbox-line" style="font-size: 24px; display: block; margin-bottom: 6px;"></i>
-            No operational expenses logged for <b>{{ selectedPeriodLabel }}</b>.
-            <div style="margin-top: 8px;">
-              <button class="btn btn-xs btn-outline" (click)="expenseViewFilter = 'ALL'">View All Time History ({{ expenses.length }})</button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Mode</th>
+            <th>Paid To</th>
+            <th>Description</th>
+            <th>Recorded By</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let exp of displayedExpenses">
+            <td><b>{{ exp.expense_date }}</b></td>
+            <td><span class="badge badge-bill-requested">{{ exp.category_name }}</span></td>
+            <td><b style="color: var(--danger); font-size: 14px;">₹{{ exp.amount | number:'1.2-2' }}</b></td>
+            <td>
+              <span class="badge-mode" [ngClass]="'mode-' + (exp.payment_mode || 'cash').toLowerCase()">
+                {{ exp.payment_mode }}
+              </span>
+            </td>
+            <td><b>{{ exp.paid_to }}</b></td>
+            <td style="color: var(--text-muted);">{{ exp.description }}</td>
+            <td>{{ exp.recorded_by_name || 'Cashier' }}</td>
+          </tr>
+          <tr *ngIf="displayedExpenses.length === 0">
+            <td colspan="7" style="text-align: center; padding: 24px; color: #64748B;">
+              <i class="ri-inbox-line" style="font-size: 24px; display: block; margin-bottom: 6px;"></i>
+              No operational expenses logged for <b>{{ selectedPeriodLabel }}</b>.
+              <div style="margin-top: 8px;">
+                <button class="btn btn-xs btn-outline" (click)="expenseViewFilter = 'ALL'">View All Time History ({{ expenses.length }})</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- TAB 3: PROFIT & LOSS -->
@@ -561,26 +565,28 @@
       </div>
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Tax Slab & Scope</th>
-          <th>Taxable Sales Value</th>
-          <th>CGST Collected (2.5%)</th>
-          <th>SGST Collected (2.5%)</th>
-          <th>Total Tax Liability to Govt</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let t of taxSummaries">
-          <td><b>{{ t.tax_slab }}</b></td>
-          <td>₹{{ t.taxable_sales | number:'1.2-2' }}</td>
-          <td>₹{{ t.cgst_collected | number:'1.2-2' }}</td>
-          <td>₹{{ t.sgst_collected | number:'1.2-2' }}</td>
-          <td><b style="color: #881337; font-size: 15px;">₹{{ t.total_tax_liability | number:'1.2-2' }}</b></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Tax Slab & Scope</th>
+            <th>Taxable Sales Value</th>
+            <th>CGST Collected (2.5%)</th>
+            <th>SGST Collected (2.5%)</th>
+            <th>Total Tax Liability to Govt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of taxSummaries">
+            <td><b>{{ t.tax_slab }}</b></td>
+            <td>₹{{ t.taxable_sales | number:'1.2-2' }}</td>
+            <td>₹{{ t.cgst_collected | number:'1.2-2' }}</td>
+            <td>₹{{ t.sgst_collected | number:'1.2-2' }}</td>
+            <td><b style="color: #881337; font-size: 15px;">₹{{ t.total_tax_liability | number:'1.2-2' }}</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 

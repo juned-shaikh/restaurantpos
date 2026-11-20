@@ -247,32 +247,34 @@
       <button class="btn btn-sm btn-primary">+ Add New Pincode</button>
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Pincode</th>
-          <th>Area / Region</th>
-          <th>Min Order Value</th>
-          <th>Delivery Fee</th>
-          <th>Est. Delivery Time</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let zone of deliveryZones">
-          <td><b>{{ zone.pincode }}</b></td>
-          <td>{{ zone.areaName }}</td>
-          <td>₹{{ zone.minOrder }}</td>
-          <td>
-            <span [style.color]="zone.deliveryFee === 0 ? 'var(--success)' : 'inherit'">
-              {{ zone.deliveryFee === 0 ? 'FREE' : '₹' + zone.deliveryFee }}
-            </span>
-          </td>
-          <td>⏱️ {{ zone.estimatedMins }} mins</td>
-          <td><span class="badge badge-available">ACTIVE</span></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="data-table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Pincode</th>
+            <th>Area / Region</th>
+            <th>Min Order Value</th>
+            <th>Delivery Fee</th>
+            <th>Est. Delivery Time</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let zone of deliveryZones">
+            <td><b>{{ zone.pincode }}</b></td>
+            <td>{{ zone.areaName }}</td>
+            <td>₹{{ zone.minOrder }}</td>
+            <td>
+              <span [style.color]="zone.deliveryFee === 0 ? 'var(--success)' : 'inherit'">
+                {{ zone.deliveryFee === 0 ? 'FREE' : '₹' + zone.deliveryFee }}
+              </span>
+            </td>
+            <td>⏱️ {{ zone.estimatedMins }} mins</td>
+            <td><span class="badge badge-available">ACTIVE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>

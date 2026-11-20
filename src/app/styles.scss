@@ -545,38 +545,59 @@ textarea {
 /* Global Mobile Modal & Dialog Adaptations (<= 640px) */
 @media (max-width: 640px) {
   .modal-overlay {
-    padding: 12px 10px;
-    align-items: flex-end; /* Sheet style on mobile or centered */
+    padding: 10px 8px;
+    align-items: flex-end; /* Modern bottom sheet presentation on mobile */
   }
 
   .modal-dialog,
   .modal-content {
     max-width: 100% !important;
     width: 100% !important;
-    border-radius: 16px;
+    border-radius: 18px 18px 12px 12px;
     margin: 0 auto;
+    max-height: calc(100dvh - 20px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .modal-header {
     padding: 14px 16px;
+    flex-shrink: 0;
+
     h3, .modal-title {
-      font-size: 15px;
+      font-size: 15.5px;
+      line-height: 1.25;
     }
   }
 
   .modal-body {
     padding: 14px 16px;
     gap: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(100dvh - 140px);
+
+    /* Auto-collapse any 2-column or 3-column inline styles inside modals */
+    [style*="grid-template-columns: 1fr 1fr"],
+    [style*="grid-template-columns: 1.4fr 1fr"],
+    [style*="grid-template-columns: repeat(2"],
+    [style*="grid-template-columns: repeat(3"] {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
   }
 
   .modal-footer {
     padding: 12px 16px;
     flex-wrap: wrap;
     gap: 8px;
+    flex-shrink: 0;
 
-    button {
+    button, .btn {
       flex: 1 1 120px;
-      padding: 10px 14px;
+      padding: 11px 14px;
+      font-size: 13px;
     }
   }
 
@@ -588,15 +609,57 @@ textarea {
     gap: 10px !important;
   }
 
+  /* Universal Page Title & Actions Adaptations on Mobile */
+  .view-header,
+  .page-title-row,
+  .tables-title-row,
+  .inventory-title-row,
+  .menu-title-row,
+  .customers-title-row,
+  .kds-title-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+
+    h1, h2, .page-title {
+      font-size: 20px !important;
+    }
+
+    .header-actions,
+    .header-right-actions,
+    .horizontal-scroll-tabs,
+    .report-tabs,
+    .station-filter-pills,
+    .tab-switcher,
+    .crm-tabs {
+      width: 100% !important;
+    }
+  }
+
   /* iOS Auto-Zoom Prevention on Input Focus */
   input[type="text"],
   input[type="number"],
   input[type="email"],
   input[type="password"],
   input[type="search"],
+  input[type="tel"],
   select,
   textarea {
     font-size: 16px !important;
+  }
+
+  /* Data Table Horizontal Scroll Guard: guarantees columns never squish */
+  .data-table-container,
+  .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    .data-table {
+      min-width: 560px;
+    }
   }
 
   /* Table padding on narrow devices */

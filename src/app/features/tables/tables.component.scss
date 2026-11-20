@@ -75,11 +75,27 @@
       padding: 6px 10px;
     }
   }
+  .floor-pills {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    .filter-pill {
+      flex-shrink: 0;
+    }
+  }
   .floor-canvas-card {
     padding: 12px 10px;
+    overflow-x: auto;
   }
   .canvas-stage {
     min-height: 320px;
+    min-width: 480px;
   }
 }
 

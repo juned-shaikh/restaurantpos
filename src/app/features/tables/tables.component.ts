@@ -116,6 +116,12 @@ export class TablesComponent implements OnInit {
     return table.current_bill_amount || table.active_bill_amount || 0;
   }
 
+  takeOrderForTable(table: Table): void {
+    const tableId = table.id;
+    this.selectedTable = null;
+    this.router.navigate(['/orders'], { queryParams: { tableId } });
+  }
+
   goToBilling(table: Table): void {
     const tableId = table.id;
     this.selectedTable = null;

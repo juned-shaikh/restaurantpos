@@ -172,11 +172,15 @@
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 10px;">
-        <button *ngIf="selectedTable.status === 'AVAILABLE'" class="btn btn-primary" (click)="occupyTable(selectedTable); selectedTable = null;">
+        <button class="btn btn-primary" (click)="takeOrderForTable(selectedTable)">
+          <i class="ri-shopping-cart-2-line"></i> Take Order / Punch KOT (Table {{ selectedTable.table_number }})
+        </button>
+
+        <button *ngIf="selectedTable.status === 'AVAILABLE'" class="btn btn-secondary" (click)="occupyTable(selectedTable); selectedTable = null;">
           🍽️ Mark as Occupied / Seat Guests
         </button>
 
-        <button *ngIf="selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILL_REQUESTED'" class="btn btn-primary" (click)="openQuickSettle(selectedTable)">
+        <button *ngIf="selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILL_REQUESTED'" class="btn btn-secondary" (click)="openQuickSettle(selectedTable)">
           ⚡ Settle Bill Now (₹{{ getTableBillAmount(selectedTable) | number:'1.2-2' }})
         </button>
 
