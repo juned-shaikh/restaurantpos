@@ -52,9 +52,9 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     tenantId: string;
   } | null = null;
 
-  // Starter Templates Setup (Defaults to FALSE for 100% blank clean canvas)
-  seedStarterMenu: boolean = false;
-  seedStarterTables: boolean = false;
+  // Starter Templates Setup (Defaults to TRUE so new restaurant immediately has live menu & tables)
+  seedStarterMenu: boolean = true;
+  seedStarterTables: boolean = true;
 
   tierOptions = [
     { label: '14-Day Free Trial (₹0)', value: 'TRIAL', icon: 'ri-time-line', subtext: 'Full feature trial' },

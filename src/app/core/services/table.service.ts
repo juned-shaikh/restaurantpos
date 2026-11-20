@@ -292,7 +292,7 @@ export class TableService {
     try {
       const client = this.supabaseService.client;
       if (client) {
-        await this.supabaseService.from('floors').insert({
+        await this.supabaseService.from('floors').upsert({
           id: floor.id,
           organization_id: floor.organization_id,
           branch_id: floor.branch_id,
