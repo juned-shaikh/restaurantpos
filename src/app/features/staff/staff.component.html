@@ -32,10 +32,10 @@
   <!-- TAB 1: MONTHLY PAYROLL & LEAVES -->
   <div *ngIf="activeTab === 'payroll'" class="payroll-view">
     <!-- Top Controls: Month Selector & Mark All Paid -->
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-      <div style="display: flex; align-items: center; gap: 10px; max-width: 320px; width: 100%;">
-        <span style="font-size: 13px; font-weight: 600; color: #475569; white-space: nowrap;">Payroll Month:</span>
-        <div style="flex: 1;">
+    <div class="payroll-controls-bar">
+      <div class="month-selector-group">
+        <span class="month-selector-label">Payroll Month:</span>
+        <div class="month-select-wrapper">
           <app-custom-select
             [options]="monthOptions"
             [(ngModel)]="selectedPayrollMonth"
@@ -43,11 +43,11 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <span class="badge badge-bill-requested" style="font-size: 12px; padding: 6px 10px;">
+      <div class="payroll-actions-group">
+        <span class="badge badge-bill-requested paid-count-badge">
           <i class="ri-bank-card-line"></i> Paid: {{ totalPaidStaffCount }} / {{ filteredPayroll.length }} Staff
         </span>
-        <button class="btn btn-sm btn-primary" (click)="markAllPaid()" [disabled]="totalPaidStaffCount === filteredPayroll.length">
+        <button class="btn btn-sm btn-primary mark-paid-btn" (click)="markAllPaid()" [disabled]="totalPaidStaffCount === filteredPayroll.length">
           <i class="ri-check-double-line"></i> Mark All Paid
         </button>
       </div>

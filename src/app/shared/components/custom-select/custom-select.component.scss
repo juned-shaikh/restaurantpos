@@ -134,6 +134,14 @@
   @media (max-width: 768px) {
     max-width: calc(100vw - 20px) !important;
   }
+
+  @media (max-width: 640px) {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
 }
 
 @keyframes dropdownSlide {
@@ -276,12 +284,16 @@
   font-weight: 600;
   color: #0F172A;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .opt-subtext {
   font-size: 11.5px;
   color: #64748B;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-top: 1px;
 }
 
