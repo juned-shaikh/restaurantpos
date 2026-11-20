@@ -71,7 +71,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .kds-title-row {
     margin-bottom: 14px;
     gap: 10px;
@@ -95,8 +95,23 @@
   }
 
   .kds-kanban-board {
-    grid-template-columns: 1fr;
+    display: flex !important;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
     gap: 14px;
+    padding-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+
+    .kanban-col {
+      min-width: 84vw;
+      max-width: 88vw;
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 12px 10px;
+    }
   }
 }
 

@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .view-header {
@@ -10,6 +13,25 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.staff-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  button, .btn {
+    flex-shrink: 0;
+  }
 }
 
 .shifts-grid {
@@ -22,7 +44,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .staff-view {
     gap: 14px;
   }
@@ -33,6 +55,29 @@
 
   .shifts-grid {
     grid-template-columns: 1fr;
+  }
+
+  .payroll-view {
+    .data-table {
+      min-width: 820px;
+    }
+  }
+
+  .data-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    .data-table {
+      min-width: 720px;
+    }
+  }
+}
+
+@media (max-width: 500px) {
+  .payroll-view {
+    [style*="grid-template-columns: repeat(auto-fit"] {
+      grid-template-columns: 1fr !important;
+    }
   }
 }
 

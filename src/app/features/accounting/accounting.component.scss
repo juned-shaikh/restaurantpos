@@ -2,6 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .view-header {
@@ -10,6 +13,25 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.accounting-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  button, .btn {
+    flex-shrink: 0;
+  }
 }
 
 .period-filter-row {
@@ -39,6 +61,7 @@
 
     .period-select-box {
       width: 250px;
+      max-width: 100%;
     }
   }
 
@@ -50,12 +73,20 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .accounting-view {
+    gap: 14px;
+  }
+
   .period-filter-row {
     padding: 10px 12px;
+    gap: 10px;
 
     .period-filter-left {
       width: 100%;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
 
       .period-select-box {
         width: 100% !important;
@@ -75,20 +106,60 @@
     .pos-stat-card {
       padding: 10px 12px !important;
       .stat-icon {
-        width: 34px !important;
-        height: 34px !important;
-        font-size: 16px !important;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 17px !important;
       }
       .stat-value {
         font-size: 15px !important;
       }
     }
   }
+
+  .cashclose-layout {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+
+    .cashclose-form {
+      padding: 16px 14px !important;
+
+      .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+
+      .variance-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 14px;
+        gap: 12px;
+
+        .var-col {
+          width: 100%;
+          input {
+            width: 100% !important;
+          }
+        }
+      }
+    }
+  }
+
+  .periodic-summary-layout {
+    padding: 14px 12px !important;
+
+    .data-table {
+      min-width: 720px;
+    }
+  }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .live-pos-strip {
     grid-template-columns: 1fr !important;
+  }
+
+  .pos-stat-card {
+    padding: 12px 14px !important;
   }
 }
 
