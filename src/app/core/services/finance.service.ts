@@ -486,7 +486,7 @@ export class FinanceService {
    */
   getProfitAndLossSummary(
     settledOrders: Order[] = [],
-    period: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY' = 'DAILY'
+    period: 'DAILY' | 'YESTERDAY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY' = 'DAILY'
   ): ProfitAndLossSummary {
     const liveSales = settledOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
     const liveDiscounts = settledOrders.reduce((sum, o) => sum + (Number(o.discount_amount) || 0), 0);
@@ -504,6 +504,14 @@ export class FinanceService {
         baseGross = 0;
         baseDiscounts = 0;
         rentFactor = 1 / 30; // 1 day pro-rated rent
+        utilFactor = 1 / 30;
+        payrollFactor = 1 / 30;
+        break;
+      case 'YESTERDAY':
+        periodName = 'Yesterday (Previous Day Audited)';
+        baseGross = 0;
+        baseDiscounts = 0;
+        rentFactor = 1 / 30;
         utilFactor = 1 / 30;
         payrollFactor = 1 / 30;
         break;

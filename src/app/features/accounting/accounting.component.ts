@@ -80,6 +80,7 @@ export class AccountingComponent implements OnInit, OnDestroy {
 
   periodOptions = [
     { label: '📅 Daily (Today)', value: 'DAILY' },
+    { label: '⏮️ Yesterday', value: 'YESTERDAY' },
     { label: '📆 This Week (7 Days)', value: 'WEEKLY' },
     { label: '🗓️ This Month (MTD)', value: 'MONTHLY' },
     { label: '📊 Last 3 Months (Quarterly)', value: 'LAST_3_MONTHS' },
@@ -191,12 +192,13 @@ export class AccountingComponent implements OnInit, OnDestroy {
     return this.financeService.isCloudConnected;
   }
 
-  // --- Dynamic Live Periodic Timeframes (Daily, Weekly, Monthly, 3M, 6M, Yearly) ---
-  selectedPeriod: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY' = 'DAILY';
+  // --- Dynamic Live Periodic Timeframes (Daily, Yesterday, Weekly, Monthly, 3M, 6M, Yearly) ---
+  selectedPeriod: 'DAILY' | 'YESTERDAY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY' = 'DAILY';
 
   get periodLabel(): string {
     switch (this.selectedPeriod) {
       case 'DAILY': return 'Daily (Today)';
+      case 'YESTERDAY': return 'Yesterday';
       case 'WEEKLY': return 'Weekly (Last 7 Days)';
       case 'MONTHLY': return 'This Month (Current MTD)';
       case 'LAST_3_MONTHS': return 'Last 3 Months (Sep - Nov)';
@@ -209,37 +211,69 @@ export class AccountingComponent implements OnInit, OnDestroy {
     return this.periodLabel;
   }
 
+  getOrderAmountByMode(order: Order, mode: 'CASH' | 'UPI' | 'CARD'): number {
+    if (order.payments && Array.isArray(order.payments) && order.payments.length > 0) {
+      return order.payments
+        .filter(p => {
+          if (mode === 'CARD') return p.payment_mode === 'CARD' || p.payment_mode === 'SPLIT';
+          return p.payment_mode === mode;
+        })
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    }
+    if (mode === 'CARD' && (order.payment_mode === 'CARD' || order.payment_mode === 'SPLIT')) {
+      return Number(order.grand_total || order.total_amount) || 0;
+    }
+    if (order.payment_mode === mode) {
+      return Number(order.grand_total || order.total_amount) || 0;
+    }
+    return 0;
+  }
+
   isOrderInPeriod(order: any, period: string): boolean {
     const dateStr = order.settled_at || order.created_at;
     if (!dateStr) return false;
-    const today = new Date();
     const orderDate = new Date(dateStr);
-    const now = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    if (isNaN(orderDate.getTime())) return false;
+
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
     switch (period) {
       case 'DAILY':
-        return dateStr.startsWith(this.todayDateStr);
+        return orderDate >= startOfToday && orderDate <= endOfToday;
+
+      case 'YESTERDAY': {
+        const startOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 0, 0, 0, 0);
+        const endOfYesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1, 23, 59, 59, 999);
+        return orderDate >= startOfYesterday && orderDate <= endOfYesterday;
+      }
+
       case 'WEEKLY': {
-        const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7, 0, 0, 0);
-        return orderDate >= weekAgo && orderDate <= now;
+        const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6, 0, 0, 0, 0);
+        return orderDate >= weekAgo && orderDate <= endOfToday;
       }
+
       case 'MONTHLY': {
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        return dateStr.startsWith(`${y}-${m}`);
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+        return orderDate >= startOfMonth && orderDate <= endOfToday;
       }
+
       case 'LAST_3_MONTHS': {
-        const threeMAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1, 0, 0, 0);
-        return orderDate >= threeMAgo && orderDate <= now;
+        const threeMAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1, 0, 0, 0, 0);
+        return orderDate >= threeMAgo && orderDate <= endOfToday;
       }
+
       case 'LAST_6_MONTHS': {
-        const sixMAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1, 0, 0, 0);
-        return orderDate >= sixMAgo && orderDate <= now;
+        const sixMAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1, 0, 0, 0, 0);
+        return orderDate >= sixMAgo && orderDate <= endOfToday;
       }
+
       case 'YEARLY': {
-        const y = String(today.getFullYear());
-        return dateStr.startsWith(y);
+        const startOfYear = new Date(today.getFullYear(), 0, 1, 0, 0, 0, 0);
+        return orderDate >= startOfYear && orderDate <= endOfToday;
       }
+
       default:
         return true;
     }
@@ -251,20 +285,17 @@ export class AccountingComponent implements OnInit, OnDestroy {
 
   getCashSalesForPeriod(period: string): number {
     return this.getOrdersForPeriod(period)
-      .filter(o => o.payment_mode === 'CASH')
-      .reduce((sum, o) => sum + (Number(o.grand_total || o.total_amount) || 0), 0);
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'CASH'), 0);
   }
 
   getUpiSalesForPeriod(period: string): number {
     return this.getOrdersForPeriod(period)
-      .filter(o => o.payment_mode === 'UPI')
-      .reduce((sum, o) => sum + (Number(o.grand_total || o.total_amount) || 0), 0);
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'UPI'), 0);
   }
 
   getCardSalesForPeriod(period: string): number {
     return this.getOrdersForPeriod(period)
-      .filter(o => o.payment_mode === 'CARD')
-      .reduce((sum, o) => sum + (Number(o.grand_total || o.total_amount) || 0), 0);
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'CARD'), 0);
   }
 
   get periodCashTotal(): number {
@@ -290,7 +321,11 @@ export class AccountingComponent implements OnInit, OnDestroy {
   // --- Date & Period Calculation Logic for Expenses ---
 
   get todayDateStr(): string {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   isExpenseInPeriod(expDateStr: string, period: string): boolean {
@@ -302,6 +337,12 @@ export class AccountingComponent implements OnInit, OnDestroy {
     switch (period) {
       case 'DAILY':
         return expDateStr === this.todayDateStr;
+
+      case 'YESTERDAY': {
+        const yDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        const yStr = `${yDate.getFullYear()}-${String(yDate.getMonth() + 1).padStart(2, '0')}-${String(yDate.getDate()).padStart(2, '0')}`;
+        return expDateStr === yStr;
+      }
 
       case 'WEEKLY': {
         const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7, 0, 0, 0);
@@ -431,11 +472,12 @@ export class AccountingComponent implements OnInit, OnDestroy {
   }
 
   get periodicComparisonData() {
-    const periods: ('DAILY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY')[] = [
-      'DAILY', 'WEEKLY', 'MONTHLY', 'LAST_3_MONTHS', 'LAST_6_MONTHS', 'YEARLY'
+    const periods: ('DAILY' | 'YESTERDAY' | 'WEEKLY' | 'MONTHLY' | 'LAST_3_MONTHS' | 'LAST_6_MONTHS' | 'YEARLY')[] = [
+      'DAILY', 'YESTERDAY', 'WEEKLY', 'MONTHLY', 'LAST_3_MONTHS', 'LAST_6_MONTHS', 'YEARLY'
     ];
     const periodMetadata: Record<string, { label: string; note: string }> = {
       DAILY: { label: 'Today (Daily)', note: 'Live Till + Today POS' },
+      YESTERDAY: { label: 'Yesterday', note: 'Previous Day Settled' },
       WEEKLY: { label: 'This Week (7 Days)', note: 'Rolling 7 Days' },
       MONTHLY: { label: 'This Month', note: 'Month-to-Date (MTD)' },
       LAST_3_MONTHS: { label: 'Last 3 Months', note: 'Quarterly Total' },
@@ -496,9 +538,9 @@ export class AccountingComponent implements OnInit, OnDestroy {
       const amt = Number(order.grand_total || order.total_amount) || 0;
       entry.total += amt;
       entry.orders += 1;
-      if (order.payment_mode === 'CASH') entry.cash += amt;
-      else if (order.payment_mode === 'UPI') entry.upi += amt;
-      else if (order.payment_mode === 'CARD') entry.card += amt;
+      entry.cash += this.getOrderAmountByMode(order, 'CASH');
+      entry.upi += this.getOrderAmountByMode(order, 'UPI');
+      entry.card += this.getOrderAmountByMode(order, 'CARD');
     }
 
     if (monthsMap.size === 0) {
@@ -532,39 +574,18 @@ export class AccountingComponent implements OnInit, OnDestroy {
   // --- Dynamic Live Order Aggregations ---
 
   get todayPosCashSales(): number {
-    return this.settledOrders.reduce((sum, o) => {
-      if (o.payments && o.payments.length > 0) {
-        const cashPay = o.payments
-          .filter(p => p.payment_mode === 'CASH')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        return sum + cashPay;
-      }
-      return sum;
-    }, 0);
+    return this.getOrdersForPeriod('DAILY')
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'CASH'), 0);
   }
 
   get todayUpiSales(): number {
-    return this.settledOrders.reduce((sum, o) => {
-      if (o.payments && o.payments.length > 0) {
-        const upiPay = o.payments
-          .filter(p => p.payment_mode === 'UPI')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        return sum + upiPay;
-      }
-      return sum;
-    }, 0);
+    return this.getOrdersForPeriod('DAILY')
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'UPI'), 0);
   }
 
   get todayCardSales(): number {
-    return this.settledOrders.reduce((sum, o) => {
-      if (o.payments && o.payments.length > 0) {
-        const cardPay = o.payments
-          .filter(p => p.payment_mode === 'CARD' || p.payment_mode === 'SPLIT')
-          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        return sum + cardPay;
-      }
-      return sum;
-    }, 0);
+    return this.getOrdersForPeriod('DAILY')
+      .reduce((sum, o) => sum + this.getOrderAmountByMode(o, 'CARD'), 0);
   }
 
   get todayTotalRevenue(): number {

@@ -92,7 +92,11 @@ export class OrderService {
 
       if (!error && data) {
         console.log(`☁️ [OrderService] Loaded ${data.length} orders for ${orgId} from Supabase.`);
-        this.activeOrdersSubject.next(data);
+        const normalized: Order[] = (data as any[]).map((o: any) => ({
+          ...o,
+          payment_mode: o.payment_mode || (o.payments && o.payments.length > 0 ? o.payments[0].payment_mode : undefined)
+        }));
+        this.activeOrdersSubject.next(normalized);
         this.persistOrdersLocally();
       }
     } catch (err) {
@@ -517,6 +521,7 @@ export class OrderService {
           is_settled: true,
           status: 'SETTLED' as const,
           settled_at: new Date().toISOString(),
+          payment_mode: paymentMode,
           payments: [...(o.payments || []), payment]
         };
       }
