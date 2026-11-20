@@ -24,8 +24,13 @@
     ],
     "skipLibCheck": true,
     "strictPropertyInitialization": false,
-    "types": []
+    "types": [
+      "jasmine"
+    ]
   },
+  "exclude": [
+    "src/**/*.spec.ts"
+  ],
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
