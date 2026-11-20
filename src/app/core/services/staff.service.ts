@@ -350,7 +350,7 @@ export class StaffService {
     } catch {}
 
     // Also create payroll entry for current month
-    const month = '2026-11';
+    const month = new Date().toISOString().slice(0, 7);
     const perDay = Math.round((baseSalary / 30) * 100) / 100;
     const newPayroll: StaffMonthlyPayroll = {
       id: `pay-${newUser.id}-${month}`,
@@ -636,7 +636,7 @@ export class StaffService {
     }
   }
 
-  getPayrollRecords(monthYear: string = '2026-11'): StaffMonthlyPayroll[] {
+  getPayrollRecords(monthYear: string = new Date().toISOString().slice(0, 7)): StaffMonthlyPayroll[] {
     const list = this.payrollSubject.value.filter(p => p.month_year === monthYear);
     if (list.length === 0) {
       this.initDefaultPayroll();
@@ -695,7 +695,7 @@ export class StaffService {
     this.savePayrollToStorage(updated);
   }
 
-  markAllSalariesPaid(monthYear: string = '2026-11'): void {
+  markAllSalariesPaid(monthYear: string = new Date().toISOString().slice(0, 7)): void {
     const updated = this.payrollSubject.value.map(rec => {
       if (rec.month_year === monthYear) {
         return {
@@ -712,7 +712,7 @@ export class StaffService {
     this.savePayrollToStorage(updated);
   }
 
-  getCurrentMonthNetPayrollTotal(monthYear: string = '2026-11'): number {
+  getCurrentMonthNetPayrollTotal(monthYear: string = new Date().toISOString().slice(0, 7)): number {
     const records = this.payrollSubject.value.filter(p => p.month_year === monthYear);
     if (records.length === 0) return 0;
     return Math.round(records.reduce((sum, p) => sum + p.net_payable_salary, 0) * 100) / 100;

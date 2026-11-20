@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { LiveDashboardKPIs, PeakHourSlot, ItemSalesVelocity, CustomerRetentionMetric } from '../models/analytics.model';
 import { OrderService } from './order.service';
 import { TableService } from './table.service';
@@ -99,7 +100,9 @@ export class AnalyticsService {
       this.tableService.tables$,
       this.kdsService.tickets$,
       this.crmService.customers$
-    ]).subscribe(([orders, tables, tickets, customers]) => {
+    ]).pipe(
+      debounceTime(400) // Debounce heavy computations so fast billing/taps on POS never lag UI
+    ).subscribe(([orders, tables, tickets, customers]) => {
       this.computeDashboardKPIs(orders, tables, tickets);
       this.computeTableBreakdown(tables);
       this.computeKitchenBreakdown(tickets);

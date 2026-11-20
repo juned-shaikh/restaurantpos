@@ -41,7 +41,7 @@ export class StaffComponent implements OnInit {
   attendancePin = '';
 
   // Payroll state
-  selectedPayrollMonth = '2026-11';
+  selectedPayrollMonth = new Date().toISOString().slice(0, 7);
   editingPayroll: StaffMonthlyPayroll | null = null;
   editBaseSalary = 0;
   editUnpaidLeaves = 0;

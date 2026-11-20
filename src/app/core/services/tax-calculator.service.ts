@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-export type TaxRegime = 'INDIA_GST' | 'US_SALES_TAX' | 'EU_VAT';
+export type TaxRegime = 'INDIA_GST';
 
 export interface TaxCalculationResult {
   subtotal: number;
@@ -22,57 +22,36 @@ export interface TaxCalculationResult {
 })
 export class TaxCalculatorService {
   /**
-   * Multi-region tax calculator supporting:
-   * 1. INDIA_GST: 5% (2.5% CGST + 2.5% SGST), inclusive or exclusive
-   * 2. US_SALES_TAX: Single rate (e.g. 8.25%), always exclusive
-   * 3. EU_VAT: Single rate (e.g. 10% / 20%), inclusive
-   * 4. ES_IVA: Spain IVA (10% hospitality / 21% standard), inclusive + VERI*FACTU chain
+   * Fast & accurate Indian GST (5% F&B default: 2.5% CGST + 2.5% SGST)
+   * Supports both Inclusive and Exclusive GST with exact Indian Rupee rounding
    */
   calculateTax(
     rawSubtotal: number,
     discountPct: number = 0,
     cgstPct: number = 2.5,
     sgstPct: number = 2.5,
-    isInclusive: boolean = false,
-    regime: TaxRegime = 'INDIA_GST'
+    isInclusive: boolean = false
   ): TaxCalculationResult {
     const discountAmount = Number(((rawSubtotal * discountPct) / 100).toFixed(2));
     const discountedTotal = Math.max(0, rawSubtotal - discountAmount);
+    const totalTaxPct = cgstPct + sgstPct;
 
     let taxableAmount = 0;
     let cgstAmount = 0;
     let sgstAmount = 0;
     let grandTotalBeforeRounding = 0;
-    let taxLabel = 'GST (5%)';
+    const taxLabel = `CGST (${cgstPct}%) + SGST (${sgstPct}%)`;
 
-    const totalTaxPct = cgstPct + sgstPct;
-
-    if (regime === 'US_SALES_TAX') {
-      taxLabel = `Sales Tax (${totalTaxPct}%)`;
-      taxableAmount = Number(discountedTotal.toFixed(2));
-      cgstAmount = Number(((taxableAmount * totalTaxPct) / 100).toFixed(2));
-      sgstAmount = 0;
-      grandTotalBeforeRounding = taxableAmount + cgstAmount;
-    } else if (regime === 'EU_VAT') {
-      taxLabel = `VAT (${totalTaxPct}%)`;
+    if (isInclusive) {
       taxableAmount = Number((discountedTotal / (1 + totalTaxPct / 100)).toFixed(2));
-      cgstAmount = Number(((taxableAmount * totalTaxPct) / 100).toFixed(2));
-      sgstAmount = 0;
+      cgstAmount = Number(((taxableAmount * cgstPct) / 100).toFixed(2));
+      sgstAmount = Number(((taxableAmount * sgstPct) / 100).toFixed(2));
       grandTotalBeforeRounding = discountedTotal;
     } else {
-      // Default: INDIA_GST
-      taxLabel = `CGST (${cgstPct}%) + SGST (${sgstPct}%)`;
-      if (isInclusive) {
-        taxableAmount = Number((discountedTotal / (1 + totalTaxPct / 100)).toFixed(2));
-        cgstAmount = Number(((taxableAmount * cgstPct) / 100).toFixed(2));
-        sgstAmount = Number(((taxableAmount * sgstPct) / 100).toFixed(2));
-        grandTotalBeforeRounding = discountedTotal;
-      } else {
-        taxableAmount = Number(discountedTotal.toFixed(2));
-        cgstAmount = Number(((taxableAmount * cgstPct) / 100).toFixed(2));
-        sgstAmount = Number(((taxableAmount * sgstPct) / 100).toFixed(2));
-        grandTotalBeforeRounding = taxableAmount + cgstAmount + sgstAmount;
-      }
+      taxableAmount = Number(discountedTotal.toFixed(2));
+      cgstAmount = Number(((taxableAmount * cgstPct) / 100).toFixed(2));
+      sgstAmount = Number(((taxableAmount * sgstPct) / 100).toFixed(2));
+      grandTotalBeforeRounding = taxableAmount + cgstAmount + sgstAmount;
     }
 
     const grandTotalRounded = Math.round(grandTotalBeforeRounding);
@@ -89,7 +68,7 @@ export class TaxCalculatorService {
       totalTax: Number((cgstAmount + sgstAmount).toFixed(2)),
       roundOff,
       grandTotal: grandTotalRounded,
-      regime,
+      regime: 'INDIA_GST',
       taxLabel
     };
   }
