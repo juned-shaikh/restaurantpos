@@ -678,26 +678,6 @@ export class OrderService {
 
     this.soundService.playPaymentSuccess();
   }
-    this.orderSettledSubject.next(settleInfo);
-    try {
-      localStorage.removeItem(this.STORAGE_KEY);
-    } catch (e) {}
-
-    if (this.broadcastChannel) {
-      try {
-        this.broadcastChannel.postMessage({
-          type: 'ORDER_SETTLED',
-          payload: settleInfo
-        });
-        this.broadcastChannel.postMessage({
-          type: 'LIVE_CART_UPDATE',
-          payload: null
-        });
-      } catch (e) {}
-    }
-
-    this.soundService.playPaymentSuccess();
-  }
 
   // QR Guest Service Requests
   submitGuestRequest(tableId: string, tableNumber: string, requestType: GuestRequest['request_type'], notes?: string): void {

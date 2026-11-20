@@ -143,8 +143,8 @@ export class KdsService {
       if (!ordersErr && ordersData && ordersData.length > 0) {
         console.log(`☁️ [KdsService] Loaded ${ordersData.length} live kitchen orders from Supabase orders table.`);
         const orderTickets = ordersData.map((o: any) => this.mapOrderToKotTicket(o));
-        const orderIds = new Set(orderTickets.map(t => t.order_id || t.id));
-        const remainingLocal = this.ticketsSubject.value.filter(t => !orderIds.has(t.order_id) && !orderIds.has(t.id));
+        const orderIds = new Set(orderTickets.map((t: any) => t.order_id || t.id));
+        const remainingLocal = this.ticketsSubject.value.filter((t: any) => !orderIds.has(t.order_id) && !orderIds.has(t.id));
         this.ticketsSubject.next([...orderTickets, ...remainingLocal]);
         this.persistTicketsLocally();
       }
