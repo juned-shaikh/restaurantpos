@@ -130,6 +130,13 @@
     left: auto;
     right: 0;
   }
+
+  @media (max-width: 480px) {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
 }
 
 @keyframes dropdownSlide {
