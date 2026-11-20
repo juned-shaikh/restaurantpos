@@ -4,7 +4,9 @@
   gap: 20px;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .view-header {
@@ -13,6 +15,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  min-width: 0;
+  width: 100%;
 }
 
 .accounting-nav-tabs {
@@ -24,6 +28,7 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 4px;
+  max-width: 100%;
 
   &::-webkit-scrollbar {
     display: none;
@@ -46,17 +51,22 @@
   flex-wrap: wrap;
   gap: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 
   .period-filter-left {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    min-width: 0;
 
     .period-title-label {
       font-size: 13.5px;
       font-weight: 700;
       color: #0F172A;
+      white-space: nowrap;
     }
 
     .period-select-box {
@@ -73,101 +83,15 @@
   }
 }
 
-@media (max-width: 768px) {
-  .accounting-view {
-    gap: 14px;
-  }
-
-  .period-filter-row {
-    padding: 10px 12px;
-    gap: 10px;
-
-    .period-filter-left {
-      width: 100%;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-
-      .period-select-box {
-        width: 100% !important;
-      }
-    }
-
-    .period-filter-right {
-      width: 100%;
-      justify-content: space-between;
-    }
-  }
-
-  .live-pos-strip {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-
-    .pos-stat-card {
-      padding: 10px 12px !important;
-      .stat-icon {
-        width: 36px !important;
-        height: 36px !important;
-        font-size: 17px !important;
-      }
-      .stat-value {
-        font-size: 15px !important;
-      }
-    }
-  }
-
-  .cashclose-layout {
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-
-    .cashclose-form {
-      padding: 16px 14px !important;
-
-      .form-grid {
-        grid-template-columns: 1fr !important;
-        gap: 10px !important;
-      }
-
-      .variance-banner {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 14px;
-        gap: 12px;
-
-        .var-col {
-          width: 100%;
-          input {
-            width: 100% !important;
-          }
-        }
-      }
-    }
-  }
-
-  .periodic-summary-layout {
-    padding: 14px 12px !important;
-
-    .data-table {
-      min-width: 720px;
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .live-pos-strip {
-    grid-template-columns: 1fr !important;
-  }
-
-  .pos-stat-card {
-    padding: 12px 14px !important;
-  }
-}
-
 /* Live Register & POS Summary Strip */
 .live-pos-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .pos-stat-card {
     background: #FFFFFF;
@@ -178,6 +102,8 @@
     align-items: center;
     gap: 14px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    min-width: 0;
+    box-sizing: border-box;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 
     &:hover {
@@ -219,36 +145,44 @@
         font-weight: 800;
         color: var(--text-main);
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .stat-sub {
         font-size: 11px;
         color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }
 }
 
+/* Nightly Cash Close Layout */
 .cashclose-layout {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   gap: 20px;
-
-  @media (max-width: 992px) {
-    grid-template-columns: 1fr;
-  }
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 
   .cashclose-form {
     padding: 24px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 
     .form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 16px;
-
-      @media (max-width: 576px) {
-        grid-template-columns: 1fr;
-      }
+      width: 100%;
+      min-width: 0;
     }
 
     .variance-banner {
@@ -261,11 +195,16 @@
       margin: 16px 0;
       flex-wrap: wrap;
       gap: 12px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
 
       .var-col {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        min-width: 0;
 
         .var-title {
           font-size: 11px;
@@ -277,9 +216,31 @@
           font-size: 18px;
           font-weight: 800;
         }
+
+        .counted-cash-field {
+          width: 150px;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
       }
     }
   }
+
+  .closings-history {
+    padding: 24px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+}
+
+.periodic-summary-layout {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .pnl-row {
@@ -290,6 +251,9 @@
 
 .pnl-card {
   padding: 24px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .badge-mode {
@@ -304,4 +268,115 @@
   &.mode-cash { background: #ECFDF5; color: #047857; }
   &.mode-upi { background: #EFF6FF; color: #1D4ED8; }
   &.mode-neft { background: #F5F3FF; color: #6D28D9; }
+}
+
+/* ==============================================================================
+   RESPONSIVE BREAKPOINTS (Mobile & Tablet)
+   ============================================================================== */
+@media (max-width: 900px) {
+  .cashclose-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .accounting-view {
+    gap: 14px;
+  }
+
+  .period-filter-row {
+    padding: 10px 12px;
+    gap: 10px;
+
+    .period-filter-left {
+      width: 100%;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+
+      .period-select-box {
+        width: 100% !important;
+      }
+    }
+
+    .period-filter-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  .live-pos-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+
+    .pos-stat-card {
+      padding: 10px 12px !important;
+
+      .stat-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 17px !important;
+      }
+
+      .stat-value {
+        font-size: 15px !important;
+      }
+    }
+  }
+
+  .cashclose-layout {
+    .cashclose-form {
+      padding: 16px 14px !important;
+
+      .form-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 12px !important;
+      }
+
+      .variance-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 14px 12px !important;
+        gap: 12px !important;
+
+        .var-col {
+          width: 100% !important;
+
+          .counted-cash-field {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      }
+    }
+
+    .closings-history {
+      padding: 16px 14px !important;
+    }
+  }
+
+  .periodic-summary-layout {
+    padding: 14px 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .live-pos-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .pos-stat-card {
+    padding: 12px 14px !important;
+  }
+
+  .cashclose-layout {
+    .cashclose-form {
+      padding: 14px 10px !important;
+    }
+
+    .closings-history {
+      padding: 14px 10px !important;
+    }
+  }
 }
