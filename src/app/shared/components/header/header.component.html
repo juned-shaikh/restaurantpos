@@ -88,8 +88,8 @@
           </a>
         </ng-container>
 
-        <a routerLink="/staff" class="dropdown-item" (click)="showUserDropdown = false">
-          <i class="ri-time-line" style="color: #0284C7; font-size: 15px;"></i> Staff Attendance & Clock-In Terminal
+        <a *ngIf="authService.hasRole('SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER')" routerLink="/staff" class="dropdown-item" (click)="showUserDropdown = false">
+          <i class="ri-time-line" style="color: #0284C7; font-size: 15px;"></i> Staff Attendance & Management
         </a>
 
         <div class="dropdown-divider"></div>

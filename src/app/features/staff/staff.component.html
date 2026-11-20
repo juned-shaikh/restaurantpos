@@ -217,6 +217,7 @@
             <th>Attendance PIN</th>
             <th>Monthly Salary (₹)</th>
             <th>Status</th>
+            <th style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -227,6 +228,28 @@
             <td><code>{{ s.manager_pin || s.pin || '••••' }}</code></td>
             <td><b>₹{{ s.monthly_salary || 16000 | number:'1.0-0' }}</b></td>
             <td><span class="badge badge-available">Active</span></td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+                <button
+                  type="button"
+                  class="btn btn-xs btn-outline"
+                  style="padding: 4px 8px; font-size: 11px; border-color: #CBD5E1; color: #334155;"
+                  (click)="openEditStaff(s)"
+                  title="Edit Staff Member"
+                >
+                  <i class="ri-edit-line"></i> Edit
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-xs"
+                  style="padding: 4px 8px; font-size: 11px; border: 1px solid #FECDD3; background: #FFF1F2; color: #DC2626;"
+                  (click)="confirmDeleteStaff(s)"
+                  title="Delete Staff Member"
+                >
+                  <i class="ri-delete-bin-line"></i> Delete
+                </button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -241,7 +264,7 @@
         {{ sh.start_time }} — {{ sh.end_time }}
       </div>
       <div style="font-size: 12px; color: var(--text-muted);">
-        Includes 30 mins clash check buffer for smooth handovers.
+        Standard restaurant duty timings for floor and kitchen staff.
       </div>
     </div>
   </div>
@@ -306,6 +329,68 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="showAddStaffModal = false">Cancel</button>
       <button class="btn btn-primary" (click)="saveNewStaff()">Enroll Staff Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Staff Member Modal -->
+<div class="modal-overlay" *ngIf="showEditStaffModal" (click)="showEditStaffModal = false">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 style="margin: 0;">Edit Staff Member</h3>
+      <button type="button" class="modal-close-btn" (click)="showEditStaffModal = false" title="Close">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-control" placeholder="Staff Name" [(ngModel)]="editStaffName">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role / Designation</label>
+        <app-custom-select
+          [options]="roleOptions"
+          [(ngModel)]="editStaffRole"
+        ></app-custom-select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label">Base Monthly Salary (₹)</label>
+          <input type="number" class="form-control" [(ngModel)]="editStaffMonthlySalary">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Attendance 4-Digit PIN</label>
+          <input type="text" maxlength="4" class="form-control" [(ngModel)]="editStaffPin">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mobile Phone Number (10 Digits)</label>
+        <div style="position: relative;">
+          <input
+            type="tel"
+            maxlength="10"
+            class="form-control"
+            [(ngModel)]="editStaffPhone"
+            (input)="onEditPhoneInput($event)"
+          >
+          <span *ngIf="editStaffPhone && editStaffPhone.length === 10" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #16A34A; font-size: 13px;">
+            <i class="ri-checkbox-circle-fill"></i>
+          </span>
+        </div>
+        <small style="color: #64748B; font-size: 11px; margin-top: 4px; display: block;">
+          Login ID and attendance PIN must be unique across all staff.
+        </small>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showEditStaffModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveEditStaff()">Save Changes</button>
     </div>
   </div>
 </div>

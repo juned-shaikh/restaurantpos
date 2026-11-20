@@ -22,7 +22,6 @@ export class KdsComponent implements OnInit, OnDestroy {
   showRejectModal = false;
   ticketToReject: KotTicket | null = null;
   rejectReason = 'Ingredient Out of Stock';
-  managerPin = '';
 
   rejectReasonOptions = [
     { label: 'Ingredient Out of Stock', value: 'Ingredient Out of Stock', icon: 'ri-close-circle-line' },
@@ -109,29 +108,20 @@ export class KdsComponent implements OnInit, OnDestroy {
     this.reprintKot(ticket);
   }
 
-  // Reject Ticket workflow (Requires Manager PIN if food is already being cooked)
+  // Reject Ticket workflow (Fast kitchen-level rejection with logged reason)
   openRejectModal(ticket: KotTicket): void {
     this.ticketToReject = ticket;
     this.rejectReason = 'Ingredient Out of Stock';
-    this.managerPin = '';
     this.showRejectModal = true;
   }
 
   confirmRejectTicket(): void {
     if (!this.ticketToReject) return;
 
-    // If food already being cooked, manager confirmation is required
-    if (this.ticketToReject.status === 'PREPARING') {
-      if (!this.securityService.verifyPin(this.managerPin)) {
-        this.toast.error('Food is already being cooked! Valid Manager PIN is required to reject.', 'Manager Auth Required');
-        return;
-      }
-    }
-
     const rejectionLog = {
       ticketNumber: this.ticketToReject.kot_number,
       reason: this.rejectReason,
-      rejectedBy: this.ticketToReject.status === 'PREPARING' ? 'Manager (PIN verified)' : 'Kitchen Chef',
+      rejectedBy: 'Kitchen Chef',
       rejectedAt: new Date().toLocaleTimeString()
     };
 

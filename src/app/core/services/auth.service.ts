@@ -452,9 +452,24 @@ export class AuthService {
 
   logout(): void {
     try {
-      localStorage.removeItem(this.SESSION_STORAGE_KEY);
-      localStorage.removeItem(this.LEGACY_SESSION_KEY);
+      const savedIdentifier = localStorage.getItem('orderrestro_saved_login_identifier');
+      const keysToRemove: string[] = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('orderrestro_') || key.startsWith('pos_') || key.startsWith('haj_'))) {
+          if (key !== 'orderrestro_saved_login_identifier') {
+            keysToRemove.push(key);
+          }
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+
+      if (savedIdentifier) {
+        localStorage.setItem('orderrestro_saved_login_identifier', savedIdentifier);
+      }
     } catch {}
+
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
   }

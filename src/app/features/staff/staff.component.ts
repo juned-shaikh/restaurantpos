@@ -17,6 +17,7 @@ export class StaffComponent implements OnInit {
   activeTab: 'attendance' | 'accounts' | 'shifts' | 'payroll' = 'payroll';
 
   showAddStaffModal = false;
+  showEditStaffModal = false;
   showClockInModal = false;
   showPayrollModal = false;
 
@@ -26,6 +27,14 @@ export class StaffComponent implements OnInit {
   newStaffPhone = '';
   newStaffMonthlySalary = 16000;
   newStaffPin = '';
+
+  // Edit Staff form state
+  editingStaffId = '';
+  editStaffName = '';
+  editStaffRole: AppUser['role'] = 'WAITER';
+  editStaffPhone = '';
+  editStaffMonthlySalary = 16000;
+  editStaffPin = '';
 
   // Quick Attendance PIN state
   selectedStaffForClockIn = '';
@@ -150,6 +159,67 @@ export class StaffComponent implements OnInit {
 
     this.showAddStaffModal = false;
     this.toast.success(`Staff member ${name} (${this.newStaffRole}) enrolled successfully! Mobile: ${phone} | PIN: ${pin}`, 'Staff Enrolled');
+  }
+
+  openEditStaff(staff: AppUser): void {
+    this.editingStaffId = staff.id;
+    this.editStaffName = staff.full_name || '';
+    this.editStaffRole = staff.role || 'WAITER';
+    this.editStaffPhone = (staff.phone || '').replace(/\D/g, '');
+    this.editStaffPin = staff.manager_pin || staff.pin || '1234';
+    this.editStaffMonthlySalary = staff.monthly_salary || 16000;
+    this.showEditStaffModal = true;
+  }
+
+  onEditPhoneInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);
+    this.editStaffPhone = input.value;
+  }
+
+  async saveEditStaff(): Promise<void> {
+    const name = this.editStaffName.trim();
+    const phone = this.editStaffPhone.trim().replace(/\D/g, '');
+
+    if (!name) {
+      this.toast.warning('Please enter staff full name.');
+      return;
+    }
+
+    if (!phone || phone.length !== 10) {
+      this.toast.warning('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const pin = this.editStaffPin.trim() || '1234';
+
+    const res = await this.staffService.updateStaffMember(this.editingStaffId, {
+      full_name: name,
+      role: this.editStaffRole,
+      phone: phone,
+      manager_pin: pin,
+      monthly_salary: Number(this.editStaffMonthlySalary) || 16000
+    });
+
+    if (!res.success) {
+      this.toast.error(res.message || 'Could not update staff member.', 'Update Error');
+      return;
+    }
+
+    this.showEditStaffModal = false;
+    this.toast.success(`Staff member ${name} updated successfully!`, 'Staff Updated');
+  }
+
+  async confirmDeleteStaff(staff: AppUser): Promise<void> {
+    const confirmed = confirm(`Are you sure you want to remove ${staff.full_name} (${staff.role})? This will delete their staff account and PIN.`);
+    if (!confirmed) return;
+
+    const res = await this.staffService.deleteStaffMember(staff.id);
+    if (res.success) {
+      this.toast.info(`Staff member ${staff.full_name} removed successfully.`, 'Staff Deleted');
+    } else {
+      this.toast.error(res.message || 'Could not delete staff member.', 'Delete Error');
+    }
   }
 
   submitClockIn(): void {

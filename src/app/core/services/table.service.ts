@@ -117,6 +117,14 @@ export class TableService {
         .order('table_number', { ascending: true });
 
       if (!tablesErr && tablesData) {
+        // Merge with any local unsynced tables so newly generated tables never disappear on refresh
+        const currentLocal = this.tablesSubject.value;
+        const cloudIds = new Set(tablesData.map((d: any) => d.id));
+        const unsynced = currentLocal.filter(t => (t.organization_id === orgId || !t.organization_id) && !cloudIds.has(t.id));
+        if (unsynced.length > 0) {
+          await this.saveTablesBatchToSupabase(unsynced);
+          tablesData.push(...unsynced);
+        }
         this.tablesSubject.next(tablesData);
         this.persistTablesLocally();
       }
@@ -166,10 +174,19 @@ export class TableService {
         .eq('organization_id', orgId)
         .order('table_number', { ascending: true });
 
-      if (!tablesErr && tablesData && tablesData.length > 0) {
-        console.log(`☁️ [TableService] Loaded ${tablesData.length} tables from Supabase for ${orgId}.`);
-        this.tablesSubject.next(tablesData);
-        this.persistTablesLocally();
+      if (!tablesErr && tablesData) {
+        const currentLocal = this.tablesSubject.value;
+        const cloudIds = new Set(tablesData.map((d: any) => d.id));
+        const unsynced = currentLocal.filter(t => (t.organization_id === orgId || !t.organization_id) && !cloudIds.has(t.id));
+        if (unsynced.length > 0) {
+          await this.saveTablesBatchToSupabase(unsynced);
+          tablesData.push(...unsynced);
+        }
+        if (tablesData.length > 0 || currentLocal.length === 0) {
+          console.log(`☁️ [TableService] Loaded ${tablesData.length} tables from Supabase for ${orgId}.`);
+          this.tablesSubject.next(tablesData);
+          this.persistTablesLocally();
+        }
       }
 
       // Subscribe to real-time changes
@@ -239,31 +256,60 @@ export class TableService {
     }
   }
 
+  private mapTableToDbPayload(table: Table): any {
+    const defaultFloorId = this.floorsSubject.value[0]?.id || `floor-${this.currentOrgId}-main`;
+    return {
+      id: table.id,
+      organization_id: table.organization_id || this.currentOrgId || 'org-default',
+      branch_id: table.branch_id || this.currentBranchId || 'branch-01',
+      floor_id: table.floor_id || defaultFloorId,
+      table_number: table.table_number,
+      capacity: Number(table.capacity) || 4,
+      shape: table.shape || 'RECTANGLE',
+      pos_x: Number(table.pos_x) || 10,
+      pos_y: Number(table.pos_y) || 10,
+      width: Number(table.width) || 90,
+      height: Number(table.height) || 90,
+      status: table.status || 'AVAILABLE',
+      current_bill_amount: Number(table.active_bill_amount || table.current_bill_amount || 0),
+      qr_token: table.qr_token || null,
+      is_active: table.is_active !== false
+    };
+  }
+
   private async saveTableToSupabase(table: Table): Promise<void> {
     try {
       const client = this.supabaseService.client;
       if (client) {
-        await this.supabaseService.from('tables').upsert({
-          id: table.id,
-          organization_id: table.organization_id || 'org-default',
-          branch_id: table.branch_id || 'branch-01',
-          floor_id: table.floor_id || 'floor-01',
-          table_number: table.table_number,
-          capacity: table.capacity,
-          shape: table.shape,
-          pos_x: table.pos_x,
-          pos_y: table.pos_y,
-          width: table.width,
-          height: table.height,
-          status: table.status,
-          qr_token: table.qr_token,
-          current_order_id: table.current_order_id || null,
-          current_bill_amount: table.active_bill_amount || 0,
-          is_active: table.is_active ?? true,
-          updated_at: new Date().toISOString()
-        });
+        const payload = this.mapTableToDbPayload(table);
+        const { error } = await this.supabaseService.from('tables').upsert(payload);
+        if (error) {
+          console.warn('⚠️ [TableService] Supabase table upsert notice:', error.message || error);
+        } else {
+          console.log(`☁️ [TableService] Saved table ${table.table_number} to Supabase`);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('⚠️ [TableService] Error saving table to Supabase:', e);
+    }
+  }
+
+  private async saveTablesBatchToSupabase(tables: Table[]): Promise<void> {
+    if (!tables || tables.length === 0) return;
+    try {
+      const client = this.supabaseService.client;
+      if (client) {
+        const payloads = tables.map(t => this.mapTableToDbPayload(t));
+        const { error } = await this.supabaseService.from('tables').upsert(payloads);
+        if (error) {
+          console.warn('⚠️ [TableService] Supabase batch table upsert notice:', error.message || error);
+        } else {
+          console.log(`☁️ [TableService] Batch saved ${tables.length} tables to Supabase`);
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ [TableService] Error batch saving tables to Supabase:', e);
+    }
   }
 
   private async updateTableInSupabase(tableId: string, status: Table['status'], billAmount?: number): Promise<void> {
@@ -272,8 +318,7 @@ export class TableService {
       if (client) {
         await this.supabaseService.from('tables').update({
           status,
-          current_bill_amount: status === 'AVAILABLE' ? 0 : (billAmount ?? 0),
-          updated_at: new Date().toISOString()
+          current_bill_amount: status === 'AVAILABLE' ? 0 : (billAmount ?? 0)
         }).eq('id', tableId);
       }
     } catch (e) {}
@@ -294,11 +339,11 @@ export class TableService {
       if (client) {
         await this.supabaseService.from('floors').upsert({
           id: floor.id,
-          organization_id: floor.organization_id,
-          branch_id: floor.branch_id,
+          organization_id: floor.organization_id || this.currentOrgId,
+          branch_id: floor.branch_id || this.currentBranchId,
           name: floor.name,
           display_order: floor.display_order,
-          is_active: floor.is_active
+          is_active: floor.is_active !== false
         });
       }
     } catch (e) {}
@@ -531,9 +576,7 @@ export class TableService {
     // Append new tables
     this.tablesSubject.next([...this.tables, ...newTables]);
     this.persistTablesLocally();
-    for (const tbl of newTables) {
-      this.saveTableToSupabase(tbl);
-    }
+    this.saveTablesBatchToSupabase(newTables);
     return newTables;
   }
 

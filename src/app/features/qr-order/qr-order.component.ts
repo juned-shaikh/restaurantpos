@@ -12,14 +12,6 @@ import { Table } from '../../core/models/table.model';
 
 export type LangCode = 'EN' | 'HI';
 
-export interface DeliveryZone {
-  pincode: string;
-  areaName: string;
-  minOrder: number;
-  deliveryFee: number;
-  estimatedMins: number;
-}
-
 @Component({
   selector: 'app-qr-order',
   templateUrl: './qr-order.component.html',
@@ -56,8 +48,7 @@ export class QrOrderComponent implements OnInit {
       yourOrder: 'Your Cart',
       placeOrder: 'Place Kitchen Order',
       emptyCart: 'Your cart is empty',
-      tableMenu: 'Guest Table Menu',
-      deliveryZones: 'Delivery Zones'
+      tableMenu: 'Guest Table Menu'
     },
     HI: {
       callWaiter: 'वेटर को बुलाएं',
@@ -65,19 +56,9 @@ export class QrOrderComponent implements OnInit {
       yourOrder: 'आपका ऑर्डर',
       placeOrder: 'किचन में ऑर्डर भेजें',
       emptyCart: 'आपकी कार्ट खाली है',
-      tableMenu: 'टेबल मेन्यू',
-      deliveryZones: 'डिलीवरी ज़ोन'
+      tableMenu: 'टेबल मेन्यू'
     }
   };
-
-  // Delivery Zones by Pincode
-  activeViewMode: 'qr' | 'delivery' = 'qr';
-  deliveryZones: DeliveryZone[] = [
-    { pincode: '400050', areaName: 'Bandra West (Flagship Zone)', minOrder: 300, deliveryFee: 0, estimatedMins: 25 },
-    { pincode: '400052', areaName: 'Khar West', minOrder: 400, deliveryFee: 35, estimatedMins: 35 },
-    { pincode: '400054', areaName: 'Santacruz West', minOrder: 500, deliveryFee: 50, estimatedMins: 45 },
-    { pincode: '400051', areaName: 'BKC Business Hub', minOrder: 600, deliveryFee: 40, estimatedMins: 40 }
-  ];
 
   isDirectScan: boolean = false;
   orderPlacedSuccess: boolean = false;
@@ -98,7 +79,8 @@ export class QrOrderComponent implements OnInit {
 
     this.route.queryParams.subscribe(params => {
       const orgId = params['orgId'] || params['org'];
-      if (orgId) {
+      // Only switch active tenant for unauthenticated guests, protecting logged-in staff
+      if (orgId && !this.authService.isAuthenticated) {
         this.tenantService.switchTenant(orgId);
       }
       const tableParam = params['tableId'] || params['table'];

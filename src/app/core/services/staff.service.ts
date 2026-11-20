@@ -25,10 +25,15 @@ export class StaffService {
 
   private defaultStaffMembers: AppUser[] = [];
   private defaultAttendance: AttendanceRecord[] = [];
+  private defaultShifts: Shift[] = [
+    { id: 'sh-01', organization_id: 'org-default', branch_id: 'branch-01', name: 'Morning Shift', start_time: '09:00 AM', end_time: '05:00 PM' },
+    { id: 'sh-02', organization_id: 'org-default', branch_id: 'branch-01', name: 'Evening / Dinner Shift', start_time: '05:00 PM', end_time: '12:00 AM' },
+    { id: 'sh-03', organization_id: 'org-default', branch_id: 'branch-01', name: 'Full Day Shift', start_time: '10:00 AM', end_time: '11:00 PM' }
+  ];
 
   private staffMembersSubject = new BehaviorSubject<AppUser[]>([]);
   private attendanceSubject = new BehaviorSubject<AttendanceRecord[]>([]);
-  private shiftsSubject = new BehaviorSubject<Shift[]>([]);
+  private shiftsSubject = new BehaviorSubject<Shift[]>(this.defaultShifts);
 
   staffMembers$: Observable<AppUser[]> = this.staffMembersSubject.asObservable();
   shifts$: Observable<Shift[]> = this.shiftsSubject.asObservable();
@@ -392,6 +397,174 @@ export class StaffService {
     }
 
     return { success: true, user: newUser };
+  }
+
+  async updateStaffMember(
+    staffId: string,
+    updates: {
+      full_name: string;
+      role: any;
+      phone: string;
+      manager_pin?: string;
+      monthly_salary?: number;
+    }
+  ): Promise<{ success: boolean; message?: string; user?: AppUser }> {
+    const cleanPhone = (updates.phone || '').replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      return { success: false, message: 'Please enter a valid 10-digit mobile number.' };
+    }
+
+    // 1. Check duplicate phone among other staff members locally
+    const dupLocal = this.staffMembersSubject.value.find(
+      s => s.id !== staffId && (s.phone || '').replace(/\D/g, '') === cleanPhone
+    );
+    if (dupLocal) {
+      return { success: false, message: `Another staff member (${dupLocal.full_name}) is already using mobile number ${cleanPhone}!` };
+    }
+
+    // 2. Check Supabase for duplicates
+    const client = this.supabaseService.client;
+    if (client) {
+      try {
+        const { data: dupCloud } = await this.supabaseService
+          .from('app_users')
+          .select('id, full_name, phone')
+          .eq('phone', cleanPhone)
+          .neq('id', staffId)
+          .limit(1);
+
+        if (dupCloud && dupCloud.length > 0) {
+          return { success: false, message: `Mobile number ${cleanPhone} is already registered to ${dupCloud[0].full_name}!` };
+        }
+      } catch (err) {
+        console.warn('Update duplicate check notice:', err);
+      }
+    }
+
+    const currentStaff = this.staffMembersSubject.value.find(s => s.id === staffId);
+    if (!currentStaff) {
+      return { success: false, message: 'Staff member not found.' };
+    }
+
+    const pin = updates.manager_pin || currentStaff.manager_pin || currentStaff.pin || '1234';
+    const salary = Number(updates.monthly_salary) || currentStaff.monthly_salary || 16000;
+    const validEmail = `${cleanPhone}@pos.local`;
+
+    const updatedUser: AppUser = {
+      ...currentStaff,
+      full_name: updates.full_name.trim(),
+      role: updates.role,
+      phone: cleanPhone,
+      email: validEmail,
+      manager_pin: pin,
+      pin: pin,
+      monthly_salary: salary
+    };
+
+    const newStaffList = this.staffMembersSubject.value.map(s => (s.id === staffId ? updatedUser : s));
+    this.staffMembersSubject.next(newStaffList);
+    this.saveStaffToStorage(newStaffList);
+
+    // Update in local auth store
+    try {
+      const regKey = 'orderrestro_registered_users_v2';
+      const existing = localStorage.getItem(regKey);
+      if (existing) {
+        let list: any[] = JSON.parse(existing);
+        list = list.map(item => {
+          if (item.user?.id === staffId) {
+            return {
+              user: updatedUser,
+              passwordPlain: pin,
+              passwordHash: pin
+            };
+          }
+          return item;
+        });
+        localStorage.setItem(regKey, JSON.stringify(list));
+      }
+    } catch {}
+
+    // Update corresponding payroll record
+    const updatedPayroll = this.payrollSubject.value.map(p => {
+      if (p.user_id === staffId) {
+        const perDay = Math.round((salary / 30) * 100) / 100;
+        return {
+          ...p,
+          user_name: updatedUser.full_name,
+          role: updatedUser.role,
+          base_monthly_salary: salary,
+          per_day_rate: perDay,
+          net_payable_salary: salary
+        };
+      }
+      return p;
+    });
+    this.payrollSubject.next(updatedPayroll);
+    this.savePayrollToStorage(updatedPayroll);
+
+    // Sync to Supabase
+    if (client) {
+      try {
+        await this.supabaseService
+          .from('app_users')
+          .update({
+            full_name: updatedUser.full_name,
+            role: updatedUser.role,
+            phone: updatedUser.phone,
+            email: updatedUser.email,
+            password: pin,
+            manager_pin: pin
+          })
+          .eq('id', staffId);
+        console.log('☁️ Staff updated in Supabase:', updatedUser.full_name);
+      } catch (err) {
+        console.warn('⚠️ Supabase staff update notice:', err);
+      }
+    }
+
+    return { success: true, user: updatedUser };
+  }
+
+  async deleteStaffMember(staffId: string): Promise<{ success: boolean; message?: string }> {
+    const target = this.staffMembersSubject.value.find(s => s.id === staffId);
+    if (!target) {
+      return { success: false, message: 'Staff member not found.' };
+    }
+
+    // 1. Remove from local staff state
+    const filteredStaff = this.staffMembersSubject.value.filter(s => s.id !== staffId);
+    this.staffMembersSubject.next(filteredStaff);
+    this.saveStaffToStorage(filteredStaff);
+
+    // 2. Remove from payroll records
+    const filteredPayroll = this.payrollSubject.value.filter(p => p.user_id !== staffId);
+    this.payrollSubject.next(filteredPayroll);
+    this.savePayrollToStorage(filteredPayroll);
+
+    // 3. Remove from local auth store
+    try {
+      const regKey = 'orderrestro_registered_users_v2';
+      const existing = localStorage.getItem(regKey);
+      if (existing) {
+        let list: any[] = JSON.parse(existing);
+        list = list.filter(item => item.user?.id !== staffId && item.user?.phone !== target.phone);
+        localStorage.setItem(regKey, JSON.stringify(list));
+      }
+    } catch {}
+
+    // 4. Delete from Supabase
+    const client = this.supabaseService.client;
+    if (client) {
+      try {
+        await this.supabaseService.from('app_users').delete().eq('id', staffId);
+        console.log('☁️ Staff removed from Supabase:', target.full_name);
+      } catch (err) {
+        console.warn('⚠️ Supabase staff delete notice:', err);
+      }
+    }
+
+    return { success: true };
   }
 
   clockInStaff(userId: string): AttendanceRecord {

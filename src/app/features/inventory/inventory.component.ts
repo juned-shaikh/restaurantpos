@@ -41,14 +41,12 @@ export class InventoryComponent implements OnInit {
   poItemQty: number = 10;
   poItemPrice: number = 250;
 
-  // Custom Dropdown Option Sets
+  // Practical Restaurant Inventory Units
   uomOptions = [
-    { label: 'KG (Kilograms)', value: 'KG' },
-    { label: 'G (Grams)', value: 'G' },
-    { label: 'L (Liters)', value: 'L' },
-    { label: 'ML (Milliliters)', value: 'ML' },
-    { label: 'PCS (Pieces / Units)', value: 'PCS' },
-    { label: 'PORTION', value: 'PORTION' }
+    { label: 'KG (Kilograms / Packets)', value: 'KG' },
+    { label: 'L (Liters / Bottles)', value: 'L' },
+    { label: 'PCS (Pieces / Units / Cans)', value: 'PCS' },
+    { label: 'PORTION (Standard Portions)', value: 'PORTION' }
   ];
 
   wasteReasonOptions = [
