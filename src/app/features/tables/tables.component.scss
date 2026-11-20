@@ -60,25 +60,46 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .tables-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
     margin-bottom: 14px;
-    gap: 10px;
+    gap: 12px;
   }
   .header-actions {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 8px;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
 
-    .btn, .filter-pill {
-      font-size: 12px;
-      padding: 6px 10px;
+    .btn {
+      flex: 1 1 calc(50% - 4px);
+      font-size: 11.5px;
+      padding: 7px 8px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      justify-content: center;
+    }
+  }
+  .tab-switcher {
+    width: 100%;
+    display: flex;
+    .filter-pill {
+      flex: 1;
+      text-align: center;
+      justify-content: center;
     }
   }
   .floor-pills {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    white-space: nowrap;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
@@ -86,12 +107,16 @@
       display: none;
     }
     .filter-pill {
-      flex-shrink: 0;
+      flex-shrink: 0 !important;
     }
   }
   .floor-canvas-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     padding: 12px 10px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .canvas-stage {
     min-height: 320px;

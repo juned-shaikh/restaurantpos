@@ -34,12 +34,37 @@
 }
 
 @media (max-width: 900px) {
+  .menu-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+
+    > div:last-child {
+      width: 100% !important;
+      display: flex !important;
+      gap: 8px !important;
+
+      .btn {
+        flex: 1 !important;
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+        justify-content: center !important;
+      }
+    }
+  }
+
   .menu-layout-grid {
     flex-direction: column;
     gap: 14px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .categories-box {
     width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     padding: 12px 14px;
   }
   .category-menu-list {
@@ -75,6 +100,14 @@
   }
   .items-table-card {
     padding: 12px 10px;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+
+    .data-table {
+      min-width: 580px;
+    }
   }
 }
 
