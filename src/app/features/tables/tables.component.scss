@@ -60,6 +60,29 @@
   }
 }
 
+@media (max-width: 640px) {
+  .tables-title-row {
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+
+    .btn, .filter-pill {
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+  }
+  .floor-canvas-card {
+    padding: 12px 10px;
+  }
+  .canvas-stage {
+    min-height: 320px;
+  }
+}
+
 /* Floor Canvas Card */
 .floor-canvas-card {
   flex: 1;

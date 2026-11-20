@@ -12,6 +12,86 @@
   gap: 16px;
 }
 
+.period-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+
+  .period-filter-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    .period-title-label {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .period-select-box {
+      width: 250px;
+    }
+  }
+
+  .period-filter-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .period-filter-row {
+    padding: 10px 12px;
+
+    .period-filter-left {
+      width: 100%;
+
+      .period-select-box {
+        width: 100% !important;
+      }
+    }
+
+    .period-filter-right {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+
+  .live-pos-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+
+    .pos-stat-card {
+      padding: 10px 12px !important;
+      .stat-icon {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 16px !important;
+      }
+      .stat-value {
+        font-size: 15px !important;
+      }
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .live-pos-strip {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Live Register & POS Summary Strip */
 .live-pos-strip {
   display: grid;

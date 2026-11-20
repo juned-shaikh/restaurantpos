@@ -72,6 +72,8 @@
 
 html, body {
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg-main);
   color: var(--text-main);
@@ -512,5 +514,95 @@ textarea {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* ==============================================================================
+   RESPONSIVE UTILITIES & MOBILE ADAPTATIONS (BRUTAL HONESTY AUDIT FIXES)
+   ============================================================================== */
+
+/* Smooth horizontal scroll strip for tabs/chips on mobile */
+.horizontal-scroll-tabs,
+.scroll-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  button, .btn, .filter-pill, .tab-link {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+/* Global Mobile Modal & Dialog Adaptations (<= 640px) */
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 12px 10px;
+    align-items: flex-end; /* Sheet style on mobile or centered */
+  }
+
+  .modal-dialog,
+  .modal-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 16px;
+    margin: 0 auto;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+    h3, .modal-title {
+      font-size: 15px;
+    }
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    button {
+      flex: 1 1 120px;
+      padding: 10px 14px;
+    }
+  }
+
+  /* Form columns auto-stack on phone screens */
+  .form-row,
+  .grid-2,
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* iOS Auto-Zoom Prevention on Input Focus */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Table padding on narrow devices */
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 12.5px;
   }
 }

@@ -7,9 +7,9 @@
       </p>
     </div>
 
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="staff-nav-tabs horizontal-scroll-tabs">
       <button class="btn btn-sm" [class.btn-primary]="activeTab === 'payroll'" [class.btn-secondary]="activeTab !== 'payroll'" (click)="activeTab = 'payroll'">
-        <i class="ri-money-rupee-circle-line"></i> Monthly Payroll & Leaves ({{ filteredPayroll.length }})
+        <i class="ri-money-rupee-circle-line"></i> Monthly Payroll ({{ filteredPayroll.length }})
       </button>
       <button class="btn btn-sm" [class.btn-primary]="activeTab === 'attendance'" [class.btn-secondary]="activeTab !== 'attendance'" (click)="activeTab = 'attendance'">
         Live Attendance ({{ attendanceLogs.length }})
@@ -21,10 +21,10 @@
         Shifts & Rosters ({{ shifts.length }})
       </button>
       <button class="btn btn-sm btn-primary" (click)="openAddStaff()">
-        <i class="ri-user-add-line"></i> Add Staff Member
+        <i class="ri-user-add-line"></i> Add Staff
       </button>
       <button class="btn btn-sm btn-secondary" (click)="showClockInModal = true">
-        <i class="ri-time-line"></i> Clock In Staff
+        <i class="ri-time-line"></i> Clock In
       </button>
     </div>
   </div>

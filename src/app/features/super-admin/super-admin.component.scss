@@ -57,3 +57,21 @@
   padding: 20px;
 }
 
+@media (max-width: 600px) {
+  .view-header {
+    gap: 12px;
+    button {
+      width: 100%;
+    }
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .client-table-card {
+    padding: 12px 10px;
+  }
+}
+

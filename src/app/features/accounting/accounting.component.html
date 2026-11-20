@@ -14,7 +14,7 @@
       </p>
     </div>
 
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="accounting-nav-tabs horizontal-scroll-tabs">
       <button class="btn btn-sm" [class.btn-primary]="activeTab === 'cashclose'" [class.btn-secondary]="activeTab !== 'cashclose'" (click)="activeTab = 'cashclose'">
         <i class="ri-safe-2-line"></i> Nightly Cash Close
       </button>
@@ -37,11 +37,11 @@
   </div>
 
   <!-- Sleek Financial Period Selector Bar -->
-  <div class="period-filter-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 8px 16px; flex-wrap: wrap; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-    <div style="display: flex; align-items: center; gap: 10px;">
+  <div class="period-filter-row">
+    <div class="period-filter-left">
       <i class="ri-calendar-2-line" style="color: #881337; font-size: 18px;"></i>
-      <span style="font-size: 13.5px; font-weight: 700; color: #0F172A;">Financial Period:</span>
-      <div style="width: 250px;">
+      <span class="period-title-label">Financial Period:</span>
+      <div class="period-select-box">
         <app-custom-select
           [options]="periodOptions"
           [(ngModel)]="selectedPeriod"
@@ -52,7 +52,7 @@
       </div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 10px;">
+    <div class="period-filter-right">
       <span class="badge" style="background: #F1F5F9; color: #475569; font-size: 12px; padding: 5px 12px; font-weight: 600;">
         <i class="ri-shopping-bag-3-line"></i> {{ periodOrderCount }} orders settled
       </span>
