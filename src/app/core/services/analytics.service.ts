@@ -140,6 +140,18 @@ export class AnalyticsService {
 
     const pendingKots = tickets.filter(t => t.status === 'PENDING' || t.status === 'PREPARING').length;
 
+    // Calculate real dynamic average prep / wait time from actual tickets
+    let realAvgPrepTime = 0;
+    const activeWithElapsed = tickets.filter(t => t.status === 'PENDING' || t.status === 'PREPARING');
+    if (activeWithElapsed.length > 0) {
+      const now = Date.now();
+      const totalElapsed = activeWithElapsed.reduce((acc, t) => {
+        const createdMs = new Date(t.created_at).getTime() || now;
+        return acc + Math.max(0, Math.round((now - createdMs) / 60000));
+      }, 0);
+      realAvgPrepTime = Number((totalElapsed / activeWithElapsed.length).toFixed(1));
+    }
+
     const kpis: LiveDashboardKPIs = {
       today_sales: liveSettledSales,
       today_orders_count: todayOrders.length,
@@ -147,7 +159,7 @@ export class AnalyticsService {
       total_tables_count: totalTables,
       occupancy_rate_pct: occupancyPct,
       pending_kot_count: pendingKots,
-      avg_prep_time_mins: pendingKots > 0 ? 8.5 : 0,
+      avg_prep_time_mins: realAvgPrepTime,
       cash_in_drawer: liveCashSales,
       upi_sales_collected: liveUpiSales
     };

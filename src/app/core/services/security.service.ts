@@ -52,7 +52,32 @@ export class SecurityService {
   }
 
   verifyPin(inputPin: string): boolean {
-    return inputPin === this.currentManagerPin || inputPin === '9999'; // Master emergency override
+    if (!inputPin) return false;
+    const cleanPin = inputPin.trim();
+
+    // 1. Verify against configured Manager PIN
+    if (cleanPin === this.currentManagerPin) {
+      return true;
+    }
+
+    // 2. Verify against active registered managers/admins
+    try {
+      const orgId = this.tenantService.currentOrg?.id || 'org-default';
+      const savedStaff = localStorage.getItem(`orderrestro_staff_v1_${orgId}`);
+      if (savedStaff) {
+        const staffList = JSON.parse(savedStaff);
+        if (Array.isArray(staffList)) {
+          const isAuthorized = staffList.some((s: any) =>
+            s.is_active &&
+            ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER'].includes(s.role) &&
+            (s.pin === cleanPin || s.manager_pin === cleanPin)
+          );
+          if (isAuthorized) return true;
+        }
+      }
+    } catch {}
+
+    return false;
   }
 
   /**

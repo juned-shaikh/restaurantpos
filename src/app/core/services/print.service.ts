@@ -304,4 +304,116 @@ export class PrintService {
       }
     }, 200);
   }
+
+  /**
+   * Generates and prints a clean A6 / Tent Standee card for dining tables
+   * Contains only restaurant branding, table number badge, high-res QR code, and scan instructions.
+   */
+  printTableTentCard(tableNumber: string, qrImageUrl: string, restaurantName: string): void {
+    const iframe = this.getOrCreatePrintIframe();
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Table Standee - ${tableNumber}</title>
+        <style>
+          @page { size: A6 portrait; margin: 8mm; }
+          @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            text-align: center;
+            background: #fff;
+            color: #0F172A;
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+          }
+          .standee-card {
+            border: 2px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 300px;
+            box-sizing: border-box;
+          }
+          .rest-name {
+            font-size: 17px;
+            font-weight: 800;
+            color: #881337;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+          }
+          .table-badge {
+            display: inline-block;
+            background: #881337;
+            color: #fff;
+            font-size: 22px;
+            font-weight: 900;
+            padding: 6px 20px;
+            border-radius: 9999px;
+            margin-bottom: 14px;
+          }
+          .qr-img {
+            width: 190px;
+            height: 190px;
+            display: block;
+            margin: 0 auto 14px auto;
+            border-radius: 8px;
+          }
+          .scan-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #1E293B;
+            margin-bottom: 4px;
+          }
+          .scan-subtitle {
+            font-size: 11.5px;
+            color: #64748B;
+            line-height: 1.4;
+          }
+          .footer-note {
+            font-size: 9.5px;
+            color: #94A3B8;
+            margin-top: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="standee-card">
+          <div class="rest-name">${restaurantName || 'Restaurant'}</div>
+          <div class="table-badge">Table ${tableNumber}</div>
+          <img class="qr-img" src="${qrImageUrl}" alt="Scan QR" />
+          <div class="scan-title">Scan to View Menu & Order</div>
+          <div class="scan-subtitle">Point your phone camera to browse dishes, place orders, or request the bill directly.</div>
+          <div class="footer-note">No App Download Required • Contactless Dining</div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.error('Standee print failed:', err);
+      }
+    }, 250);
+  }
 }

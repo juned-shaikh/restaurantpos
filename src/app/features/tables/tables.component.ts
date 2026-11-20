@@ -7,7 +7,7 @@ import { PrintService } from '../../core/services/print.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { TaxCalculatorService } from '../../core/services/tax-calculator.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Table, TableShape, Floor, WaitlistEntry, Reservation } from '../../core/models/table.model';
+import { Table, TableShape, Floor } from '../../core/models/table.model';
 import { Order } from '../../core/models/order.model';
 
 @Component({
@@ -18,20 +18,14 @@ import { Order } from '../../core/models/order.model';
 export class TablesComponent implements OnInit, OnDestroy {
   floors: Floor[] = [];
   tables: Table[] = [];
-  waitlist: WaitlistEntry[] = [];
-  reservations: Reservation[] = [];
   private subs = new Subscription();
 
   selectedFloorId: string = '';
   selectedTable: Table | null = null;
-  activeTab: 'floor' | 'waitlist' | 'reservations' = 'floor';
 
   showTransferModal = false;
   showQrModal = false;
   transferTargetTableId = '';
-  newWaitlistName = '';
-  newWaitlistPhone = '';
-  newWaitlistSize = 2;
 
   // Single Table Modal State
   showAddTableModal = false;
@@ -89,9 +83,6 @@ export class TablesComponent implements OnInit, OnDestroy {
         }
       })
     );
-
-    this.subs.add(this.tableService.waitlist$.subscribe(w => this.waitlist = w));
-    this.subs.add(this.tableService.reservations$.subscribe(r => this.reservations = r));
   }
 
   ngOnDestroy(): void {
@@ -210,35 +201,6 @@ export class TablesComponent implements OnInit, OnDestroy {
     this.showQrModal = true;
   }
 
-  addWaitlistEntry(): void {
-    if (!this.newWaitlistName || !this.newWaitlistPhone) return;
-
-    this.tableService.addToWaitlist({
-      customer_name: this.newWaitlistName,
-      phone: this.newWaitlistPhone,
-      party_size: this.newWaitlistSize,
-      status: 'WAITING',
-      estimated_wait_mins: 15
-    });
-
-    this.newWaitlistName = '';
-    this.newWaitlistPhone = '';
-    this.newWaitlistSize = 2;
-  }
-
-  seatGuest(waitlistId: string, tableId: string): void {
-    this.tableService.seatWaitlistGuest(waitlistId, tableId);
-  }
-
-  seatWaitlistGuest(waitlistId: string): void {
-    const avail = this.availableTables;
-    if (avail.length > 0) {
-      this.seatGuest(waitlistId, avail[0].id);
-    } else {
-      this.toast.warning('No available tables at the moment. Please free up a table first.', 'Tables Full');
-    }
-  }
-
   showQrForTable(table: Table): void {
     this.openQrModal(table);
   }
@@ -272,7 +234,11 @@ export class TablesComponent implements OnInit, OnDestroy {
   }
 
   printTentCard(): void {
-    window.print();
+    if (!this.selectedTable) return;
+    const qrUrl = this.getTableQrImageUrl(this.selectedTable);
+    const branch = this.tenantService.activeBranch;
+    const restName = branch?.name || this.tenantService.currentOrg?.name || 'Restaurant';
+    this.printService.printTableTentCard(this.selectedTable.table_number, qrUrl, restName);
   }
 
   // --- Add Single Table ---

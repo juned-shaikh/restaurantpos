@@ -405,16 +405,55 @@ export class KdsService {
   getStationPerformanceMetrics(): KdsPerformanceMetric[] {
     const currentTickets = this.ticketsSubject.value;
     const stations = this.stationsSubject.value;
+    const now = Date.now();
 
     return stations.map(station => {
-      const stationTickets = currentTickets.filter(t => t.kitchen_station_id === station.id || t.kitchen_station_name === station.name);
+      const stationTickets = currentTickets.filter(t => 
+        !station.id || station.id === 'ALL' || t.kitchen_station_id === station.id || t.kitchen_station_name === station.name
+      );
+
+      // Dynamically calculate actual prep durations from ticket timestamps
+      const prepDurations: number[] = [];
+      let lateCount = 0;
+
+      for (const t of stationTickets) {
+        const createdMs = new Date(t.created_at).getTime() || now;
+        const elapsedMins = Math.max(0, Math.floor((now - createdMs) / 60000));
+
+        if (t.ready_at && t.prep_started_at) {
+          const readyMs = new Date(t.ready_at).getTime();
+          const prepMs = new Date(t.prep_started_at).getTime();
+          const duration = Math.max(1, Math.round((readyMs - prepMs) / 60000));
+          prepDurations.push(duration);
+        } else if (t.status === 'READY' || t.status === 'SERVED') {
+          const readyMs = t.ready_at ? new Date(t.ready_at).getTime() : now;
+          const duration = Math.max(1, Math.round((readyMs - createdMs) / 60000));
+          prepDurations.push(duration);
+        } else if (t.status === 'PENDING' || t.status === 'PREPARING') {
+          if (elapsedMins > 20) {
+            lateCount++;
+          }
+        }
+      }
+
+      let avgPrep = 0;
+      let fastest = 0;
+      let slowest = 0;
+
+      if (prepDurations.length > 0) {
+        const sum = prepDurations.reduce((a, b) => a + b, 0);
+        avgPrep = Number((sum / prepDurations.length).toFixed(1));
+        fastest = Math.min(...prepDurations);
+        slowest = Math.max(...prepDurations);
+      }
+
       return {
         station_name: station.name,
         total_kots: stationTickets.length,
-        avg_prep_time_mins: stationTickets.length > 0 ? 8.5 : 0,
-        fastest_ticket_mins: stationTickets.length > 0 ? 3.0 : 0,
-        slowest_ticket_mins: stationTickets.length > 0 ? 15.0 : 0,
-        late_tickets_count: stationTickets.filter(t => t.status === 'PENDING' || t.status === 'PREPARING').length
+        avg_prep_time_mins: avgPrep,
+        fastest_ticket_mins: fastest,
+        slowest_ticket_mins: slowest,
+        late_tickets_count: lateCount
       };
     });
   }

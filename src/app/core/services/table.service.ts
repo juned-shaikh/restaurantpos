@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Table, TableShape, Floor, WaitlistEntry, Reservation, TableTransferRequest } from '../models/table.model';
+import { Table, TableShape, Floor, TableTransferRequest } from '../models/table.model';
 import { SoundService } from './sound.service';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
@@ -11,14 +11,10 @@ import { TenantService } from './tenant.service';
 export class TableService {
   private floorsSubject = new BehaviorSubject<Floor[]>([]);
   private tablesSubject = new BehaviorSubject<Table[]>([]);
-  private waitlistSubject = new BehaviorSubject<WaitlistEntry[]>([]);
-  private reservationsSubject = new BehaviorSubject<Reservation[]>([]);
   private tableTransferredSubject = new BehaviorSubject<TableTransferRequest | null>(null);
 
   floors$: Observable<Floor[]> = this.floorsSubject.asObservable();
   tables$: Observable<Table[]> = this.tablesSubject.asObservable();
-  waitlist$: Observable<WaitlistEntry[]> = this.waitlistSubject.asObservable();
-  reservations$: Observable<Reservation[]> = this.reservationsSubject.asObservable();
   tableTransferred$: Observable<TableTransferRequest | null> = this.tableTransferredSubject.asObservable();
 
   private get STORAGE_KEY_TABLES(): string {
@@ -419,39 +415,6 @@ export class TableService {
     this.updateTableInSupabase(req.toTableId, 'OCCUPIED', fromTable.active_bill_amount);
     this.tableTransferredSubject.next(req);
     return true;
-  }
-
-  addToWaitlist(entry: Omit<WaitlistEntry, 'id' | 'created_at' | 'organization_id' | 'branch_id'>): void {
-    const newEntry: WaitlistEntry = {
-      ...entry,
-      id: `wl-${Date.now()}`,
-      organization_id: this.currentOrgId,
-      branch_id: this.currentBranchId,
-      created_at: new Date().toISOString()
-    };
-    this.waitlistSubject.next([...this.waitlistSubject.value, newEntry]);
-  }
-
-  seatWaitlistGuest(id: string, tableId: string): void {
-    const wl = this.waitlistSubject.value.find(w => w.id === id);
-    if (!wl) return;
-
-    this.waitlistSubject.next(this.waitlistSubject.value.filter(w => w.id !== id));
-    this.updateTableStatus(tableId, 'OCCUPIED');
-  }
-
-  addReservation(res: Omit<Reservation, 'id' | 'created_at' | 'organization_id' | 'branch_id'>): void {
-    const newRes: Reservation = {
-      ...res,
-      id: `res-${Date.now()}`,
-      organization_id: this.currentOrgId,
-      branch_id: this.currentBranchId,
-      created_at: new Date().toISOString()
-    };
-    this.reservationsSubject.next([...this.reservationsSubject.value, newRes]);
-    if (res.table_id) {
-      this.updateTableStatus(res.table_id, 'RESERVED');
-    }
   }
 
   updateTablePosition(tableId: string, posX: number, posY: number): void {

@@ -2,51 +2,25 @@
   <!-- Top Header Row -->
   <div class="tables-title-row">
     <div>
-      <h1 class="page-title">{{ activeTab === 'reservations' ? 'Reservations' : 'Tables' }}</h1>
-      <p class="page-subtitle">
-        {{ activeTab === 'reservations' ? 'Upcoming bookings across all floors' : 'Live floor status — tap a table to update it' }}
-      </p>
+      <h1 class="page-title">Tables & Floor Management</h1>
+      <p class="page-subtitle">Live interactive floor plan — tap a table to manage orders or billing</p>
     </div>
 
     <div class="header-actions">
-      <!-- Tab Switcher (Floor Plan vs Reservations) -->
-      <div class="tab-switcher">
-        <button
-          class="filter-pill"
-          [class.active]="activeTab === 'floor'"
-          (click)="activeTab = 'floor'"
-        >
-          <i class="ri-layout-masonry-line"></i> Floor Plan
-        </button>
-        <button
-          class="filter-pill"
-          [class.active]="activeTab === 'reservations'"
-          (click)="activeTab = 'reservations'"
-        >
-          <i class="ri-calendar-event-line"></i> Reservations
-        </button>
-      </div>
+      <!-- Quick Bulk Setup for 1 to 40+ tables -->
+      <button class="btn btn-secondary btn-sm" (click)="openBulkModal()" title="Auto-generate multiple tables at once">
+        <i class="ri-magic-line"></i> Bulk Setup
+      </button>
 
-      <ng-container *ngIf="activeTab === 'floor'">
-        <!-- Quick Bulk Setup for 1 to 40+ tables -->
-        <button class="btn btn-secondary btn-sm" (click)="openBulkModal()" title="Auto-generate multiple tables at once">
-          <i class="ri-magic-line"></i> Bulk Setup
-        </button>
-
-        <!-- Single Table Add -->
-        <button class="btn btn-primary btn-sm" (click)="openAddTableModal()">
-          <i class="ri-add-line"></i> Add Table
-        </button>
-      </ng-container>
-
-      <button *ngIf="activeTab === 'reservations'" class="btn btn-primary btn-sm" (click)="activeTab = 'reservations'">
-        <i class="ri-add-line"></i> New Reservation
+      <!-- Single Table Add -->
+      <button class="btn btn-primary btn-sm" (click)="openAddTableModal()">
+        <i class="ri-add-line"></i> Add Table
       </button>
     </div>
   </div>
 
-  <!-- TAB 1: VISUAL FLOOR PLAN & WAITLIST (Matches Reference Image 2) -->
-  <div *ngIf="activeTab === 'floor'" class="floor-and-waitlist-layout">
+  <!-- VISUAL FLOOR PLAN -->
+  <div class="floor-and-waitlist-layout">
     <!-- LEFT: Floor Canvas -->
     <div class="floor-canvas-card card">
       <!-- Floor Switcher & Add Section Pill -->
@@ -106,26 +80,6 @@
         <div class="legend-item">
           <span class="legend-dot dot-grey"></span>
           <span>Cleaning / out of service</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 2: RESERVATIONS LIST -->
-  <div *ngIf="activeTab === 'reservations'" class="reservations-view">
-    <div class="reservations-list card">
-      <div *ngIf="reservations.length === 0" class="no-waitlist-msg">
-        No upcoming bookings.
-      </div>
-
-      <div *ngFor="let r of reservations" class="reservation-card-row">
-        <div class="res-left">
-          <div class="res-name">{{ r.customer_name }}</div>
-          <div class="res-meta">{{ r.party_size }} guests · {{ r.phone }}</div>
-        </div>
-        <div class="res-right">
-          <div class="res-time">{{ r.reservation_time | date:'d MMM, HH:mm' }}</div>
-          <span class="badge badge-warning">RESERVED</span>
         </div>
       </div>
     </div>
