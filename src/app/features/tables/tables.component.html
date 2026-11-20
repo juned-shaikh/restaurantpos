@@ -30,17 +30,17 @@
       <ng-container *ngIf="activeTab === 'floor'">
         <!-- Quick Bulk Setup for 1 to 40+ tables -->
         <button class="btn btn-secondary btn-sm" (click)="openBulkModal()" title="Auto-generate multiple tables at once">
-          <i class="ri-magic-line"></i> ⚡ Quick Bulk Setup (1-40 Tables)
+          <i class="ri-magic-line"></i> Bulk Setup
         </button>
 
         <!-- Single Table Add -->
         <button class="btn btn-primary btn-sm" (click)="openAddTableModal()">
-          <i class="ri-add-line"></i> + Add Table
+          <i class="ri-add-line"></i> Add Table
         </button>
       </ng-container>
 
       <button *ngIf="activeTab === 'reservations'" class="btn btn-primary btn-sm" (click)="activeTab = 'reservations'">
-        <i class="ri-add-line"></i> New reservation
+        <i class="ri-add-line"></i> New Reservation
       </button>
     </div>
   </div>
@@ -61,7 +61,7 @@
         </button>
 
         <button class="filter-pill add-floor-pill" (click)="openAddFloorModal()" title="Add a new seating section (e.g. Terrace, AC Lounge)">
-          <i class="ri-add-line"></i> + Add Floor / Area
+          <i class="ri-add-line"></i> Add Floor
         </button>
       </div>
 
@@ -70,9 +70,9 @@
         <div *ngIf="filteredTables.length === 0" class="empty-canvas-notice">
           <i class="ri-table-line"></i>
           <h4>No tables on this floor yet</h4>
-          <p>Click <b>"+ Add Table"</b> or use <b>"⚡ Quick Bulk Setup"</b> to add your cafe tables in 1 second.</p>
+          <p>Tap <b>"Add Table"</b> or use <b>"Bulk Setup"</b> to add your tables in seconds.</p>
           <button class="btn btn-primary btn-sm" (click)="openBulkModal()">
-            ⚡ Bulk Generate 10-40 Tables
+            <i class="ri-magic-line"></i> Auto-Generate Tables
           </button>
         </div>
 

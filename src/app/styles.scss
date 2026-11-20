@@ -739,14 +739,13 @@ textarea {
     box-sizing: border-box !important;
   }
 
-  /* Touch targets minimum size and responsive button wrapping */
+  /* Touch targets minimum size */
   .btn {
     min-height: 38px;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    white-space: normal !important;
-    word-break: break-word !important;
-    text-align: center !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    line-height: 1.3;
+    white-space: nowrap;
   }
 
   .btn-lg {
@@ -758,6 +757,10 @@ textarea {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.35 !important;
+    text-align: center !important;
   }
 
   .form-group {
