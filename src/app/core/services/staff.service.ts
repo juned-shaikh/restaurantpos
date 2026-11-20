@@ -216,6 +216,34 @@ export class StaffService {
         this.staffMembersSubject.next(existing);
         this.saveStaffToStorage(existing);
       }
+
+      // Sync any local staff not yet in cloud
+      const currentLocalStaff = this.staffMembersSubject.value;
+      if (currentLocalStaff.length > 0) {
+        const cloudIds = new Set((data || []).map((d: any) => d.id));
+        const unsynced = currentLocalStaff.filter(s => !cloudIds.has(s.id));
+        for (const localMember of unsynced) {
+          const cleanPhone = (localMember.phone || '').replace(/[\s\-\(\)\+]/g, '');
+          const pin = localMember.manager_pin || localMember.pin || '1234';
+          const validEmail = localMember.email?.trim() || (cleanPhone ? `${cleanPhone}@pos.local` : `${localMember.id}@pos.local`);
+          this.supabaseService.from('app_users').upsert({
+            id: localMember.id,
+            organization_id: localMember.organization_id || this.currentOrgId,
+            branch_id: localMember.branch_id || 'branch-01',
+            full_name: localMember.full_name,
+            email: validEmail,
+            phone: localMember.phone || '',
+            role: localMember.role || 'WAITER',
+            password: pin,
+            manager_pin: pin,
+            hourly_rate: localMember.hourly_rate || 150,
+            is_active: localMember.is_active !== false,
+            created_at: localMember.created_at || new Date().toISOString()
+          }).then(() => {
+            console.log('☁️ Synced offline staff to Supabase:', localMember.full_name);
+          }).catch(() => {});
+        }
+      }
     } catch {}
   }
 
@@ -249,14 +277,17 @@ export class StaffService {
   addStaffMember(staff: Partial<AppUser> & { pin?: string; monthly_salary?: number }): AppUser {
     const assignedPin = staff.manager_pin || staff.pin || '1234';
     const baseSalary = Number(staff.monthly_salary) || (staff.hourly_rate ? staff.hourly_rate * 8 * 26 : 16000);
+    const cleanPhone = (staff.phone || '').replace(/[\s\-\(\)\+]/g, '');
+    const validEmail = staff.email && staff.email.trim() ? staff.email.trim() : (cleanPhone ? `${cleanPhone}@pos.local` : `staff-${Date.now()}@pos.local`);
+
     const newUser: AppUser = {
       id: `staff-${Date.now()}`,
-      organization_id: staff.organization_id || 'org-default',
+      organization_id: staff.organization_id || this.currentOrgId || 'org-default',
       branch_id: staff.branch_id || 'branch-01',
       full_name: staff.full_name || 'New Staff',
       role: staff.role || 'WAITER',
       phone: staff.phone || '',
-      email: staff.email || '',
+      email: validEmail,
       manager_pin: assignedPin,
       pin: assignedPin,
       hourly_rate: Number(staff.hourly_rate || 150),
@@ -268,6 +299,20 @@ export class StaffService {
     const updated = [...this.staffMembersSubject.value, newUser];
     this.staffMembersSubject.next(updated);
     this.saveStaffToStorage(updated);
+
+    // Also register in local auth fallback store (orderrestro_registered_users_v2) so login works offline/instantly
+    try {
+      const regKey = 'orderrestro_registered_users_v2';
+      const existing = localStorage.getItem(regKey);
+      let list: any[] = existing ? JSON.parse(existing) : [];
+      list = list.filter(item => item.user?.phone !== newUser.phone && item.user?.email !== newUser.email);
+      list.push({
+        user: newUser,
+        passwordPlain: assignedPin,
+        passwordHash: assignedPin
+      });
+      localStorage.setItem(regKey, JSON.stringify(list));
+    } catch {}
 
     // Also create payroll entry for current month
     const month = '2026-11';
@@ -302,10 +347,11 @@ export class StaffService {
         branch_id: newUser.branch_id,
         full_name: newUser.full_name,
         role: newUser.role,
+        email: newUser.email,
         phone: newUser.phone,
-        manager_pin: newUser.manager_pin,
+        password: assignedPin,
+        manager_pin: assignedPin,
         hourly_rate: newUser.hourly_rate,
-        monthly_salary: newUser.monthly_salary,
         is_active: true,
         created_at: newUser.created_at
       }).then(() => {
