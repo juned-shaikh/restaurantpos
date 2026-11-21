@@ -190,9 +190,16 @@ export class OrdersComponent implements OnInit, OnDestroy {
       this.activeOrderToSettle = existingOrder;
       this.syncDiscountValues();
     } else {
-      this.clearCart();
-      this.activeOrderToSettle = null;
+      this.resetCartState();
     }
+    this.publishLiveTillState();
+  }
+
+  private resetCartState(): void {
+    this.cartItems = [];
+    this.discountPct = 0;
+    this.discountAmount = 0;
+    this.activeOrderToSettle = null;
     this.publishLiveTillState();
   }
 
@@ -302,31 +309,13 @@ export class OrdersComponent implements OnInit, OnDestroy {
   }
 
   // --- Dual Discount Synchronization (% and ₹ amount) ---
-  async onDiscountPctChange(): Promise<void> {
-    if (this.discountPct > 10) {
-      const requestedPct = this.discountPct;
-      const approved = await this.securityService.requestManagerApproval(
-        'High Discount Override',
-        `Applying a ${requestedPct}% discount (above 10% limit) requires Manager PIN approval.`
-      );
-      if (!approved) {
-        this.discountPct = 0;
-        this.discountAmount = 0;
-        this.publishLiveTillState();
-        return;
-      }
-      this.securityService.logAudit('HIGH_DISCOUNT_APPLIED', {
-        discountPct: requestedPct,
-        subtotal: this.cartSubtotal,
-        orderNumber: this.activeOrderToSettle?.order_number
-      });
-    }
-
+  onDiscountPctChange(): void {
     if (this.cartSubtotal > 0) {
       this.discountAmount = Number(((this.cartSubtotal * this.discountPct) / 100).toFixed(2));
     } else {
       this.discountAmount = 0;
     }
+    this.publishLiveTillState();
   }
 
   onDiscountAmountChange(): void {
@@ -426,27 +415,8 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.updateQty(item, 1);
   }
 
-  async clearCart(): Promise<void> {
-    const hasSentItems = this.cartItems.some(i => i.is_sent_to_kitchen);
-    if (hasSentItems || this.activeOrderToSettle) {
-      const approved = await this.securityService.requestManagerApproval(
-        'Void / Cancel Running Order',
-        `Cancelling or clearing an active order with kitchen dishes requires Manager PIN.`
-      );
-      if (!approved) return;
-
-      this.securityService.logAudit('VOID_RUNNING_ORDER', {
-        tableId: this.selectedTableId,
-        orderId: this.activeOrderToSettle?.id,
-        itemsCount: this.cartItems.length,
-        subtotal: this.cartSubtotal
-      });
-    }
-
-    this.cartItems = [];
-    this.discountPct = 0;
-    this.discountAmount = 0;
-    this.publishLiveTillState();
+  clearCart(): void {
+    this.resetCartState();
   }
 
   // --- Print Bill Before Payment (Pre-Check / Proforma) ---
