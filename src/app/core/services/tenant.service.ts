@@ -85,6 +85,10 @@ export class TenantService {
     return this.currentOrgSubject.value;
   }
 
+  get currentOrgId(): string {
+    return this.currentOrgSubject.value?.id || 'org-default';
+  }
+
   get activeBranch(): Branch {
     return this.activeBranchSubject.value;
   }
@@ -98,6 +102,14 @@ export class TenantService {
 
     // 1. Try reading from localStorage for instant persistent restore on page refresh
     try {
+      // Clean up orphaned legacy cafe_flags_ keys if present
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('cafe_flags_')) {
+          localStorage.removeItem(key);
+        }
+      }
+
       const saved = localStorage.getItem(this.STORAGE_KEY_TENANTS);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -289,9 +301,35 @@ export class TenantService {
     const active = this.activeBranchSubject.value;
     active.feature_flags = { ...active.feature_flags, ...flags };
     this.activeBranchSubject.next({ ...active });
-    try {
-      localStorage.setItem(`cafe_flags_${active.id}`, JSON.stringify(active.feature_flags));
-    } catch (e) {}
+
+    const updatedBranches = this.branchesSubject.value.map(b => b.id === active.id ? { ...active } : b);
+    this.branchesSubject.next(updatedBranches);
+
+    // Persist to Tenants Cache locally
+    const orgId = this.currentOrgId;
+    const updatedTenants = this.tenantsSubject.value.map(t => {
+      if (t.id === orgId) {
+        return {
+          ...t,
+          branches: updatedBranches,
+          feature_flags: active.feature_flags
+        };
+      }
+      return t;
+    });
+    this.tenantsSubject.next(updatedTenants);
+    this.saveTenantsLocally(updatedTenants);
+
+    // Sync to Supabase Cloud
+    if (this.supabaseService.client) {
+      try {
+        this.supabaseService.from('branches').upsert(active).then().catch();
+        this.supabaseService.from('organizations').update({
+          feature_flags: active.feature_flags,
+          updated_at: new Date().toISOString()
+        }).eq('id', orgId).then().catch();
+      } catch (e) {}
+    }
   }
 
   /**
@@ -376,5 +414,30 @@ export class TenantService {
 
     const updatedList = this.branchesSubject.value.map(b => b.id === merged.id ? merged : b);
     this.branchesSubject.next(updatedList);
+
+    // Persist to Tenants Cache locally
+    const orgId = this.currentOrgId;
+    const updatedTenants = this.tenantsSubject.value.map(t => {
+      if (t.id === orgId) {
+        return {
+          ...t,
+          branches: updatedList
+        };
+      }
+      return t;
+    });
+    this.tenantsSubject.next(updatedTenants);
+    this.saveTenantsLocally(updatedTenants);
+
+    // Sync to Supabase Cloud
+    if (this.supabaseService.client) {
+      try {
+        this.supabaseService.from('branches').upsert(merged).then().catch();
+        this.supabaseService.from('organizations').update({
+          name: merged.name,
+          updated_at: new Date().toISOString()
+        }).eq('id', orgId).then().catch();
+      } catch (e) {}
+    }
   }
 }

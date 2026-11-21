@@ -48,6 +48,18 @@ export class SecurityService {
       try {
         localStorage.setItem(this.PIN_STORAGE_KEY, newPin);
       } catch {}
+
+      // Cloud Sync: Update manager PIN in Supabase for this organization
+      if (this.supabaseService.client) {
+        const orgId = this.tenantService.currentOrg?.id;
+        if (orgId && orgId !== 'org-default') {
+          this.supabaseService.from('app_users')
+            .update({ manager_pin: newPin })
+            .eq('organization_id', orgId)
+            .in('role', ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'RESTAURANT_MANAGER'])
+            .then().catch();
+        }
+      }
     }
   }
 
@@ -60,22 +72,67 @@ export class SecurityService {
       return true;
     }
 
-    // 2. Verify against active registered managers/admins
+    // 2. Verify against active registered managers/admins from local cache (Correct Key!)
     try {
       const orgId = this.tenantService.currentOrg?.id || 'org-default';
-      const savedStaff = localStorage.getItem(`orderrestro_staff_v1_${orgId}`);
-      if (savedStaff) {
-        const staffList = JSON.parse(savedStaff);
-        if (Array.isArray(staffList)) {
-          const isAuthorized = staffList.some((s: any) =>
-            s.is_active &&
-            ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER'].includes(s.role) &&
-            (s.pin === cleanPin || s.manager_pin === cleanPin)
-          );
+      const keysToCheck = [
+        `orderrestro_staff_members_${orgId}`,
+        `orderrestro_staff_v1_${orgId}`,
+        'orderrestro_registered_users_v3',
+        'orderrestro_registered_users_v2'
+      ];
+
+      for (const k of keysToCheck) {
+        const raw = localStorage.getItem(k);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const isAuthorized = parsed.some((item: any) => {
+            const s = item.user || item;
+            const pinMatch = (s.pin === cleanPin || s.manager_pin === cleanPin || item.passwordPlain === cleanPin);
+            const isManagerRole = ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'RESTAURANT_MANAGER'].includes(s.role);
+            return s.is_active !== false && isManagerRole && pinMatch;
+          });
           if (isAuthorized) return true;
         }
       }
     } catch {}
+
+    return false;
+  }
+
+  /**
+   * Real Supabase Cloud verification for Manager PIN authorization
+   */
+  async verifyPinCloud(inputPin: string): Promise<boolean> {
+    if (!inputPin) return false;
+    const cleanPin = inputPin.trim();
+
+    // 1. Instant local check
+    if (this.verifyPin(cleanPin)) return true;
+
+    // 2. Verify directly against Supabase Cloud app_users
+    if (this.supabaseService.client) {
+      try {
+        const orgId = this.tenantService.currentOrg?.id;
+        let query = this.supabaseService.from('app_users')
+          .select('id, role, pin, manager_pin, is_active')
+          .eq('is_active', true)
+          .or(`pin.eq.${cleanPin},manager_pin.eq.${cleanPin}`);
+        if (orgId && orgId !== 'org-default') {
+          query = query.eq('organization_id', orgId);
+        }
+        const { data, error } = await query.limit(5);
+        if (!error && data && data.length > 0) {
+          const isAuthorized = data.some((u: any) =>
+            ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'RESTAURANT_MANAGER'].includes(u.role)
+          );
+          if (isAuthorized) return true;
+        }
+      } catch (e) {
+        console.warn('⚠️ [SecurityService] Cloud PIN verification fallback to local:', e);
+      }
+    }
 
     return false;
   }

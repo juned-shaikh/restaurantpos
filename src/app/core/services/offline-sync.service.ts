@@ -78,8 +78,26 @@ export class OfflineSyncService {
       localStorage.setItem(this.QUEUE_KEY_ORDERS, JSON.stringify(queue));
       this.updateQueuedCount();
       console.warn(`📦 [OfflineSync] Order #${order.order_number} safely preserved in offline storage.`);
-    } catch (e) {
-      console.error('Failed to save offline order to localStorage', e);
+    } catch (e: any) {
+      console.error('Failed to save offline order to localStorage, attempting quota cleanup:', e);
+      try {
+        // Attempt quota recovery by pruning non-critical keys
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('orderrestro_orders_cache_')) {
+            localStorage.removeItem(k);
+          }
+        }
+        localStorage.setItem(this.QUEUE_KEY_ORDERS, JSON.stringify(queue));
+        this.updateQueuedCount();
+      } catch (retryErr) {
+        console.error('CRITICAL: LocalStorage full! Could not persist offline order:', retryErr);
+      }
+    }
+
+    // Cloud-First: If internet is connected, immediately push queue to Supabase
+    if (this.isOnline) {
+      this.autoSync();
     }
   }
 
@@ -115,6 +133,10 @@ export class OfflineSyncService {
     } catch (e) {
       console.error('Failed to save offline inventory update to localStorage', e);
     }
+
+    if (this.isOnline) {
+      this.autoSync();
+    }
   }
 
   // --- Expenses Queue ---
@@ -141,6 +163,10 @@ export class OfflineSyncService {
       console.warn(`📦 [OfflineSync] Expense ${expense.id} preserved in offline storage.`);
     } catch (e) {
       console.error('Failed to save offline expense to localStorage', e);
+    }
+
+    if (this.isOnline) {
+      this.autoSync();
     }
   }
 

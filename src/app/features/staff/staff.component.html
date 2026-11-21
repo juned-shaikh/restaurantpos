@@ -1,239 +1,99 @@
 <div class="staff-view">
+  <!-- Top Header Bar -->
   <div class="view-header">
     <div>
-      <h2>Staff & Attendance Management</h2>
-      <p style="color: var(--text-muted); font-size: 13px;">
-        Clock-in/out terminal, shift scheduling, and staff monthly payroll calculation.
+      <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #0F172A;">Staff Management</h2>
+      <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0 0;">
+        Manage cafe staff directory, designated floor/kitchen roles, and 4-digit POS access PINs.
       </p>
     </div>
 
-    <div class="staff-nav-tabs horizontal-scroll-tabs">
-      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'payroll'" [class.btn-secondary]="activeTab !== 'payroll'" (click)="activeTab = 'payroll'">
-        <i class="ri-money-rupee-circle-line"></i> Monthly Payroll ({{ filteredPayroll.length }})
-      </button>
-      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'attendance'" [class.btn-secondary]="activeTab !== 'attendance'" (click)="activeTab = 'attendance'">
-        Live Attendance ({{ attendanceLogs.length }})
-      </button>
-      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'accounts'" [class.btn-secondary]="activeTab !== 'accounts'" (click)="activeTab = 'accounts'">
-        Staff Accounts ({{ staffMembers.length }})
-      </button>
-      <button class="btn btn-sm" [class.btn-primary]="activeTab === 'shifts'" [class.btn-secondary]="activeTab !== 'shifts'" (click)="activeTab = 'shifts'">
-        Shifts & Rosters ({{ shifts.length }})
-      </button>
-      <button class="btn btn-sm btn-primary" (click)="openAddStaff()">
-        <i class="ri-user-add-line"></i> Add Staff
-      </button>
-      <button class="btn btn-sm btn-secondary" (click)="showClockInModal = true">
-        <i class="ri-time-line"></i> Clock In
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="btn btn-primary" (click)="openAddStaff()" style="display: inline-flex; align-items: center; gap: 6px;">
+        <i class="ri-user-add-line"></i> Add New Staff Member
       </button>
     </div>
   </div>
 
-  <!-- TAB 1: MONTHLY PAYROLL & LEAVES -->
-  <div *ngIf="activeTab === 'payroll'" class="payroll-view">
-    <!-- Top Controls: Month Selector & Mark All Paid -->
-    <div class="payroll-controls-bar">
-      <div class="month-selector-group">
-        <span class="month-selector-label">Payroll Month:</span>
-        <div class="month-select-wrapper">
-          <app-custom-select
-            [options]="monthOptions"
-            [(ngModel)]="selectedPayrollMonth"
-          ></app-custom-select>
-        </div>
-      </div>
-
-      <div class="payroll-actions-group">
-        <span class="badge badge-bill-requested paid-count-badge">
-          <i class="ri-bank-card-line"></i> Paid: {{ totalPaidStaffCount }} / {{ filteredPayroll.length }} Staff
-        </span>
-        <button class="btn btn-sm btn-primary mark-paid-btn" (click)="markAllPaid()" [disabled]="totalPaidStaffCount === filteredPayroll.length">
-          <i class="ri-check-double-line"></i> Mark All Paid
-        </button>
-      </div>
-    </div>
-
-    <!-- 4 KPI Summary Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 20px;">
-      <div class="card" style="margin: 0; padding: 14px 18px; border-left: 4px solid #10B981; background: #F0FDF4;">
-        <div style="font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">Total Net Salary Payable</div>
-        <div style="font-size: 24px; font-weight: 800; color: #065F46; margin-top: 4px;">₹{{ totalNetPayroll | number:'1.2-2' }}</div>
-        <div style="font-size: 11px; color: #047857; margin-top: 2px;">⚡ Dynamically linked to Store P&L</div>
-      </div>
-
-      <div class="card" style="margin: 0; padding: 14px 18px; border-left: 4px solid #3B82F6; background: #EFF6FF;">
-        <div style="font-size: 11px; font-weight: 700; color: #1D4ED8; text-transform: uppercase; letter-spacing: 0.5px;">Gross Base Payroll</div>
-        <div style="font-size: 24px; font-weight: 800; color: #1E40AF; margin-top: 4px;">₹{{ totalBasePayroll | number:'1.2-2' }}</div>
-        <div style="font-size: 11px; color: #1D4ED8; margin-top: 2px;">Fixed monthly contract base</div>
-      </div>
-
-      <div class="card" style="margin: 0; padding: 14px 18px; border-left: 4px solid #EF4444; background: #FEF2F2;">
-        <div style="font-size: 11px; font-weight: 700; color: #B91C1C; text-transform: uppercase; letter-spacing: 0.5px;">Total Leave Deductions</div>
-        <div style="font-size: 24px; font-weight: 800; color: #991B1B; margin-top: 4px;">-₹{{ totalLeaveDeductions | number:'1.2-2' }}</div>
-        <div style="font-size: 11px; color: #B91C1C; margin-top: 2px;">Unpaid leaves × daily rate</div>
-      </div>
-
-      <div class="card" style="margin: 0; padding: 14px 18px; border-left: 4px solid #8B5CF6; background: #F5F3FF;">
-        <div style="font-size: 11px; font-weight: 700; color: #6D28D9; text-transform: uppercase; letter-spacing: 0.5px;">Overtime & Bonuses</div>
-        <div style="font-size: 24px; font-weight: 800; color: #5B21B6; margin-top: 4px;">+₹{{ totalOvertimeBonus | number:'1.2-2' }}</div>
-        <div style="font-size: 11px; color: #6D28D9; margin-top: 2px;">Extra shifts and incentives</div>
-      </div>
-    </div>
-
-    <!-- Payroll Table Card -->
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-        <h3 style="margin: 0; font-size: 16px;">
-          <i class="ri-file-list-3-line" style="color: #881337;"></i> Staff Salary & Leave Adjustment Sheet
-        </h3>
-        <span style="font-size: 12px; color: #64748B;">
-          Formula: Net = Base Salary - (Unpaid Leaves × Per-Day Rate) + Overtime
+  <!-- Staff Directory Card -->
+  <div class="card" style="padding: 20px;">
+    <!-- Search & Stats Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; font-size: 15px; color: #1E293B;">Enrolled Staff Directory</span>
+        <span class="badge badge-bill-requested" style="font-size: 12px; font-weight: 700;">
+          {{ staffMembers.length }} Members
         </span>
       </div>
 
-      <div class="data-table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Staff Member</th>
-              <th>Role</th>
-              <th>Base Salary</th>
-              <th>Month Days</th>
-              <th>Present Days</th>
-              <th>Unpaid Leaves</th>
-              <th>Per-Day Rate</th>
-              <th>Leave Cut</th>
-              <th>Overtime</th>
-              <th>Net Salary</th>
-              <th>Status</th>
-              <th style="text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let p of filteredPayroll">
-              <td>
-                <div style="font-weight: 700; color: #0F172A;">{{ p.user_name }}</div>
-                <div style="font-size: 11px; color: #64748B;">ID: {{ p.user_id }}</div>
-              </td>
-              <td><span class="badge badge-bill-requested">{{ p.role }}</span></td>
-              <td><b>₹{{ p.base_monthly_salary | number:'1.0-0' }}</b></td>
-              <td>{{ p.total_days_in_month }}</td>
-              <td><span style="color: #059669; font-weight: 600;">{{ p.days_present }} days</span></td>
-              <td>
-                <div style="display: inline-flex; align-items: center; gap: 4px; background: #F1F5F9; padding: 2px 6px; border-radius: 6px;">
-                  <button type="button" class="btn btn-sm" style="padding: 1px 6px; font-size: 11px; height: 22px; line-height: 1;" (click)="quickAdjustLeaves(p, -1)" title="Reduce unpaid leave">-</button>
-                  <span style="font-weight: 700; color: #DC2626; min-width: 16px; text-align: center;">{{ p.unpaid_leaves }}</span>
-                  <button type="button" class="btn btn-sm" style="padding: 1px 6px; font-size: 11px; height: 22px; line-height: 1;" (click)="quickAdjustLeaves(p, 1)" title="Add unpaid leave">+</button>
-                </div>
-              </td>
-              <td><span style="font-size: 12px; color: #64748B;">₹{{ p.per_day_rate | number:'1.0-0' }}/d</span></td>
-              <td style="color: #DC2626; font-weight: 600;">
-                {{ p.leave_deductions > 0 ? ('-₹' + (p.leave_deductions | number:'1.0-0')) : '₹0' }}
-              </td>
-              <td style="color: #059669; font-weight: 600;">
-                {{ p.overtime_bonus > 0 ? ('+₹' + (p.overtime_bonus | number:'1.0-0')) : '₹0' }}
-              </td>
-              <td style="font-size: 15px; font-weight: 800; color: #881337;">
-                ₹{{ p.net_payable_salary | number:'1.2-2' }}
-              </td>
-              <td>
-                <span class="badge" [ngClass]="p.status === 'PAID' ? 'badge-available' : 'badge-warning'">
-                  {{ p.status === 'PAID' ? 'PAID ✅' : 'PENDING ⏳' }}
-                </span>
-              </td>
-              <td style="text-align: right;">
-                <div style="display: inline-flex; gap: 6px;">
-                  <button *ngIf="p.status !== 'PAID'" class="btn btn-sm btn-primary" style="padding: 3px 8px; font-size: 11px;" (click)="markPaid(p.id)">
-                    Pay Now
-                  </button>
-                  <button class="btn btn-sm btn-secondary" style="padding: 3px 8px; font-size: 11px;" (click)="openEditPayroll(p)" title="Edit Salary or Leaves">
-                    <i class="ri-edit-line"></i> Edit
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Search Input -->
+      <div style="position: relative; min-width: 260px;">
+        <i class="ri-search-line" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8; font-size: 14px;"></i>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Search by name, role, phone..."
+          [(ngModel)]="searchQuery"
+          style="padding-left: 32px; font-size: 13px;"
+        >
       </div>
     </div>
-  </div>
 
-  <!-- TAB 2: ATTENDANCE LOGS -->
-  <div *ngIf="activeTab === 'attendance'" class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-      <h3>Daily Shift Attendance Log</h3>
-      <button class="btn btn-sm btn-primary" (click)="showClockInModal = true">
-        <i class="ri-time-line"></i> Clock In Staff
-      </button>
-    </div>
+    <!-- Staff Table -->
     <div class="data-table-container">
       <table class="data-table">
         <thead>
           <tr>
             <th>Staff Member</th>
-            <th>Role</th>
-            <th>Clock In</th>
-            <th>Clock Out</th>
-            <th>Total Hours</th>
-            <th>Overtime</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let a of attendanceLogs">
-            <td><b>{{ a.user_name }}</b></td>
-            <td><span class="badge badge-bill-requested">{{ a.role }}</span></td>
-            <td>{{ a.clock_in | date:'mediumTime' }}</td>
-            <td>{{ a.clock_out ? (a.clock_out | date:'mediumTime') : 'Active on Floor 🟢' }}</td>
-            <td><b>{{ a.total_hours }} hrs</b></td>
-            <td style="color: var(--warning);">{{ a.overtime_hours }} hrs</td>
-            <td>
-              <button *ngIf="!a.clock_out" class="btn btn-sm btn-danger" (click)="clockOut(a.id)">
-                Clock Out ⏱️
-              </button>
-              <span *ngIf="a.clock_out" class="badge badge-available">Shift Ended</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- TAB 3: STAFF ACCOUNTS -->
-  <div *ngIf="activeTab === 'accounts'" class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-      <h3>Enrolled Cafe Staff Directory</h3>
-      <button class="btn btn-primary btn-sm" (click)="openAddStaff()">
-        + Add New Staff Member
-      </button>
-    </div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Designation / Role</th>
-            <th>Phone</th>
-            <th>Attendance PIN</th>
-            <th>Monthly Salary (₹)</th>
+            <th>Role / Designation</th>
+            <th>Mobile Number</th>
+            <th>POS Access PIN</th>
             <th>Status</th>
             <th style="text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let s of staffMembers">
-            <td><b>{{ s.full_name }}</b></td>
-            <td><span class="badge badge-bill-requested">{{ s.role }}</span></td>
-            <td>{{ s.phone }}</td>
-            <td><code>{{ s.manager_pin || s.pin || '••••' }}</code></td>
-            <td><b>₹{{ s.monthly_salary || 16000 | number:'1.0-0' }}</b></td>
-            <td><span class="badge badge-available">Active</span></td>
+          <tr *ngFor="let s of filteredStaff">
+            <td>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #FFE4E6; color: #881337; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;">
+                  {{ (s.full_name ? s.full_name.substring(0, 2) : 'ST').toUpperCase() }}
+                </div>
+                <div>
+                  <div style="font-weight: 700; color: #0F172A; font-size: 14px;">{{ s.full_name }}</div>
+                  <div style="font-size: 11px; color: #64748B;">ID: {{ s.id }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-bill-requested': s.role === 'WAITER',
+                'badge-warning': s.role === 'KITCHEN_CHEF',
+                'badge-available': s.role === 'CASHIER',
+                'badge-reserved': s.role === 'BRANCH_MANAGER' || s.role === 'ORG_ADMIN' || s.role === 'SUPER_ADMIN'
+              }">
+                {{ s.role }}
+              </span>
+            </td>
+            <td>
+              <span style="font-weight: 600; color: #334155;">{{ s.phone || '—' }}</span>
+            </td>
+            <td>
+              <code style="background: #F1F5F9; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 13px; color: #0F172A; letter-spacing: 1px;">
+                {{ s.manager_pin || s.pin || '••••' }}
+              </code>
+            </td>
+            <td>
+              <span class="badge badge-available">
+                <i class="ri-checkbox-circle-fill" style="margin-right: 3px;"></i> Active
+              </span>
+            </td>
             <td style="text-align: right;">
               <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
                 <button
                   type="button"
                   class="btn btn-xs btn-outline"
-                  style="padding: 4px 8px; font-size: 11px; border-color: #CBD5E1; color: #334155;"
+                  style="padding: 5px 10px; font-size: 12px; border-color: #CBD5E1; color: #334155; display: inline-flex; align-items: center; gap: 4px;"
                   (click)="openEditStaff(s)"
                   title="Edit Staff Member"
                 >
@@ -242,7 +102,7 @@
                 <button
                   type="button"
                   class="btn btn-xs"
-                  style="padding: 4px 8px; font-size: 11px; border: 1px solid #FECDD3; background: #FFF1F2; color: #DC2626;"
+                  style="padding: 5px 10px; font-size: 12px; border: 1px solid #FECDD3; background: #FFF1F2; color: #DC2626; display: inline-flex; align-items: center; gap: 4px;"
                   (click)="confirmDeleteStaff(s)"
                   title="Delete Staff Member"
                 >
@@ -251,21 +111,20 @@
               </div>
             </td>
           </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="filteredStaff.length === 0">
+            <td colspan="6" style="text-align: center; padding: 40px 16px; color: #64748B;">
+              <i class="ri-user-unfollow-line" style="font-size: 36px; color: #CBD5E1; display: block; margin-bottom: 8px;"></i>
+              <div style="font-weight: 600; font-size: 14px; color: #334155;">No staff members found</div>
+              <p style="font-size: 12px; margin: 4px 0 12px 0;">Enroll your first staff member to assign floor and kitchen roles.</p>
+              <button class="btn btn-sm btn-primary" (click)="openAddStaff()">
+                <i class="ri-user-add-line"></i> Enroll Staff Member
+              </button>
+            </td>
+          </tr>
         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- TAB 4: SHIFTS -->
-  <div *ngIf="activeTab === 'shifts'" class="shifts-grid">
-    <div *ngFor="let sh of shifts" class="shift-card card">
-      <h3>{{ sh.name }}</h3>
-      <div style="font-size: 24px; font-weight: 800; color: #881337; margin: 12px 0;">
-        {{ sh.start_time }} — {{ sh.end_time }}
-      </div>
-      <div style="font-size: 12px; color: var(--text-muted);">
-        Standard restaurant duty timings for floor and kitchen staff.
-      </div>
     </div>
   </div>
 </div>
@@ -274,7 +133,7 @@
 <div class="modal-overlay" *ngIf="showAddStaffModal" (click)="showAddStaffModal = false">
   <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 style="margin: 0;">Add New Cafe Staff</h3>
+      <h3 style="margin: 0; font-size: 17px; font-weight: 700;">Add New Cafe Staff</h3>
       <button type="button" class="modal-close-btn" (click)="showAddStaffModal = false" title="Close">
         <i class="ri-close-line"></i>
       </button>
@@ -294,15 +153,12 @@
         ></app-custom-select>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="form-group">
-          <label class="form-label">Base Monthly Salary (₹)</label>
-          <input type="number" class="form-control" [(ngModel)]="newStaffMonthlySalary" placeholder="e.g. 18000">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Attendance 4-Digit PIN</label>
-          <input type="text" maxlength="4" class="form-control" placeholder="e.g. 1234" [(ngModel)]="newStaffPin">
-        </div>
+      <div class="form-group">
+        <label class="form-label">Attendance & POS 4-Digit PIN</label>
+        <input type="text" maxlength="4" class="form-control" placeholder="e.g. 1234" [(ngModel)]="newStaffPin">
+        <small style="color: #64748B; font-size: 11px; margin-top: 4px; display: block;">
+          Used by staff to punch orders and authorize actions on the POS till.
+        </small>
       </div>
 
       <div class="form-group">
@@ -321,7 +177,7 @@
           </span>
         </div>
         <small style="color: #64748B; font-size: 11px; margin-top: 4px; display: block;">
-          Used as staff login ID and attendance verification (strictly 10 digits).
+          Used as staff login ID (strictly 10 digits).
         </small>
       </div>
     </div>
@@ -337,7 +193,7 @@
 <div class="modal-overlay" *ngIf="showEditStaffModal" (click)="showEditStaffModal = false">
   <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 style="margin: 0;">Edit Staff Member</h3>
+      <h3 style="margin: 0; font-size: 17px; font-weight: 700;">Edit Staff Member</h3>
       <button type="button" class="modal-close-btn" (click)="showEditStaffModal = false" title="Close">
         <i class="ri-close-line"></i>
       </button>
@@ -357,15 +213,9 @@
         ></app-custom-select>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="form-group">
-          <label class="form-label">Base Monthly Salary (₹)</label>
-          <input type="number" class="form-control" [(ngModel)]="editStaffMonthlySalary">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Attendance 4-Digit PIN</label>
-          <input type="text" maxlength="4" class="form-control" [(ngModel)]="editStaffPin">
-        </div>
+      <div class="form-group">
+        <label class="form-label">Attendance & POS 4-Digit PIN</label>
+        <input type="text" maxlength="4" class="form-control" [(ngModel)]="editStaffPin">
       </div>
 
       <div class="form-group">
@@ -382,113 +232,12 @@
             <i class="ri-checkbox-circle-fill"></i>
           </span>
         </div>
-        <small style="color: #64748B; font-size: 11px; margin-top: 4px; display: block;">
-          Login ID and attendance PIN must be unique across all staff.
-        </small>
       </div>
     </div>
 
     <div class="modal-footer">
       <button class="btn btn-secondary" (click)="showEditStaffModal = false">Cancel</button>
       <button class="btn btn-primary" (click)="saveEditStaff()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<!-- Clock In Terminal Modal -->
-<div class="modal-overlay" *ngIf="showClockInModal" (click)="showClockInModal = false">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3 style="margin: 0;">⏱️ Shift Attendance Clock-In</h3>
-      <button type="button" class="modal-close-btn" (click)="showClockInModal = false" title="Close">
-        <i class="ri-close-line"></i>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <p style="font-size: 13px; color: #64748B; margin-bottom: 6px;">
-        Select your name and enter your 4-digit PIN to punch attendance.
-      </p>
-
-      <div class="form-group">
-        <label class="form-label">Select Staff Member</label>
-        <app-custom-select
-          [options]="staffClockInOptions"
-          [(ngModel)]="selectedStaffForClockIn"
-          placeholder="Select staff on duty..."
-        ></app-custom-select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Enter 4-Digit PIN</label>
-        <input
-          type="password"
-          maxlength="4"
-          class="form-control"
-          placeholder="••••"
-          [(ngModel)]="attendancePin"
-          style="font-size: 20px; letter-spacing: 6px; text-align: center; width: 140px; margin: 0 auto;"
-        >
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="showClockInModal = false">Cancel</button>
-      <button class="btn btn-primary" (click)="submitClockIn()">Punch Clock-In</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Payroll Modal -->
-<div class="modal-overlay" *ngIf="showPayrollModal" (click)="showPayrollModal = false">
-  <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width: 440px;">
-    <div class="modal-header">
-      <h3 style="margin: 0;">Adjust Salary & Leaves</h3>
-      <button type="button" class="modal-close-btn" (click)="showPayrollModal = false" title="Close">
-        <i class="ri-close-line"></i>
-      </button>
-    </div>
-
-    <div class="modal-body" *ngIf="editingPayroll">
-      <div style="padding: 10px 12px; background: #F8FAFC; border-radius: 8px; margin-bottom: 14px; border: 1px solid #E2E8F0;">
-        <div style="font-weight: 700; color: #0F172A; font-size: 15px;">{{ editingPayroll.user_name }}</div>
-        <div style="font-size: 12px; color: #64748B;">Role: {{ editingPayroll.role }} | Month: {{ editingPayroll.month_year }}</div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Base Monthly Salary (₹)</label>
-        <input type="number" class="form-control" [(ngModel)]="editBaseSalary">
-        <small style="color: #64748B; font-size: 11px;">Per-day rate: ₹{{ (editBaseSalary / 30) | number:'1.0-0' }} / day</small>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        <div class="form-group">
-          <label class="form-label">Unpaid Leaves (Days)</label>
-          <input type="number" min="0" max="30" class="form-control" [(ngModel)]="editUnpaidLeaves">
-          <small style="color: #DC2626; font-size: 11px;">Deduction: -₹{{ (editUnpaidLeaves * (editBaseSalary / 30)) | number:'1.0-0' }}</small>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Overtime / Bonus (₹)</label>
-          <input type="number" min="0" class="form-control" [(ngModel)]="editOvertimeBonus">
-          <small style="color: #059669; font-size: 11px;">Additional payout</small>
-        </div>
-      </div>
-
-      <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <div style="font-size: 12px; font-weight: 600; color: #166534;">Net Calculated Salary:</div>
-          <div style="font-size: 11px; color: #15803D;">(Base - Leaves Cut + Bonus)</div>
-        </div>
-        <div style="font-size: 20px; font-weight: 800; color: #166534;">
-          ₹{{ (editBaseSalary - (editUnpaidLeaves * (editBaseSalary / 30)) + editOvertimeBonus) | number:'1.2-2' }}
-        </div>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="showPayrollModal = false">Cancel</button>
-      <button class="btn btn-primary" (click)="savePayrollAdjustment()">Save Adjustment</button>
     </div>
   </div>
 </div>

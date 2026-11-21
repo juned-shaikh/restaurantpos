@@ -335,18 +335,20 @@ export class StaffService {
     this.staffMembersSubject.next(updated);
     this.saveStaffToStorage(updated);
 
-    // Also register in local auth fallback store (orderrestro_registered_users_v2) so login works offline/instantly
+    // Also register in local auth fallback store (syncs both v3 and v2) so login works offline/instantly
     try {
-      const regKey = 'orderrestro_registered_users_v2';
-      const existing = localStorage.getItem(regKey);
-      let list: any[] = existing ? JSON.parse(existing) : [];
-      list = list.filter(item => item.user?.phone !== newUser.phone && item.user?.email !== newUser.email);
-      list.push({
-        user: newUser,
-        passwordPlain: assignedPin,
-        passwordHash: assignedPin
-      });
-      localStorage.setItem(regKey, JSON.stringify(list));
+      const regKeys = ['orderrestro_registered_users_v3', 'orderrestro_registered_users_v2'];
+      for (const regKey of regKeys) {
+        const existing = localStorage.getItem(regKey);
+        let list: any[] = existing ? JSON.parse(existing) : [];
+        list = list.filter(item => item.user?.phone !== newUser.phone && item.user?.email !== newUser.email);
+        list.push({
+          user: newUser,
+          passwordPlain: assignedPin,
+          passwordHash: assignedPin
+        });
+        localStorage.setItem(regKey, JSON.stringify(list));
+      }
     } catch {}
 
     // Also create payroll entry for current month
@@ -465,23 +467,25 @@ export class StaffService {
     this.staffMembersSubject.next(newStaffList);
     this.saveStaffToStorage(newStaffList);
 
-    // Update in local auth store
+    // Update in local auth store (both v3 and v2)
     try {
-      const regKey = 'orderrestro_registered_users_v2';
-      const existing = localStorage.getItem(regKey);
-      if (existing) {
-        let list: any[] = JSON.parse(existing);
-        list = list.map(item => {
-          if (item.user?.id === staffId) {
-            return {
-              user: updatedUser,
-              passwordPlain: pin,
-              passwordHash: pin
-            };
-          }
-          return item;
-        });
-        localStorage.setItem(regKey, JSON.stringify(list));
+      const regKeys = ['orderrestro_registered_users_v3', 'orderrestro_registered_users_v2'];
+      for (const regKey of regKeys) {
+        const existing = localStorage.getItem(regKey);
+        if (existing) {
+          let list: any[] = JSON.parse(existing);
+          list = list.map(item => {
+            if (item.user?.id === staffId) {
+              return {
+                user: updatedUser,
+                passwordPlain: pin,
+                passwordHash: pin
+              };
+            }
+            return item;
+          });
+          localStorage.setItem(regKey, JSON.stringify(list));
+        }
       }
     } catch {}
 
@@ -542,14 +546,16 @@ export class StaffService {
     this.payrollSubject.next(filteredPayroll);
     this.savePayrollToStorage(filteredPayroll);
 
-    // 3. Remove from local auth store
+    // 3. Remove from local auth store (both v3 and v2)
     try {
-      const regKey = 'orderrestro_registered_users_v2';
-      const existing = localStorage.getItem(regKey);
-      if (existing) {
-        let list: any[] = JSON.parse(existing);
-        list = list.filter(item => item.user?.id !== staffId && item.user?.phone !== target.phone);
-        localStorage.setItem(regKey, JSON.stringify(list));
+      const regKeys = ['orderrestro_registered_users_v3', 'orderrestro_registered_users_v2'];
+      for (const regKey of regKeys) {
+        const existing = localStorage.getItem(regKey);
+        if (existing) {
+          let list: any[] = JSON.parse(existing);
+          list = list.filter(item => item.user?.id !== staffId && item.user?.phone !== target.phone);
+          localStorage.setItem(regKey, JSON.stringify(list));
+        }
       }
     } catch {}
 

@@ -267,34 +267,43 @@ export class AuthService {
         }
       }
 
-      // Check all local staff rosters (orderrestro_staff_members_*)
+      // Check local staff roster for active organization FIRST to prevent cross-tenant collision
+      const activeOrgId = this.tenantService?.currentOrg?.id;
+      const staffKeysToCheck: string[] = [];
+      if (activeOrgId) {
+        staffKeysToCheck.push(`orderrestro_staff_members_${activeOrgId}`);
+      }
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('orderrestro_staff_members_')) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const staffList: AppUser[] = JSON.parse(raw);
-            const staffMatch = staffList.find(s => {
-              const staffEmail = s.email?.toLowerCase();
-              const staffPhone = (s.phone || '').replace(/[\s\-\(\)\+]/g, '');
-              return staffEmail === identifier || (cleanPhone.length >= 8 && staffPhone && staffPhone.includes(cleanPhone));
-            });
-            if (staffMatch) {
-              const isMatch = (staffMatch.manager_pin === pwd) ||
-                              (staffMatch.pin === pwd);
-              if (isMatch) {
-                const user: AppUser = { ...staffMatch, last_login_at: new Date().toISOString() };
-                this.setSessionUser(user);
-                let defaultRoute = '/orders';
-                if (user.role === 'SUPER_ADMIN') defaultRoute = '/super-admin';
-                else if (user.role === 'WAITER') defaultRoute = '/tables';
-                else if (user.role === 'KITCHEN_CHEF') defaultRoute = '/kds';
-                else if (user.role === 'STORE_KEEPER') defaultRoute = '/inventory';
-                else if (user.role === 'ACCOUNTANT') defaultRoute = '/accounting';
-                return { success: true, role: user.role, route: defaultRoute };
-              } else {
-                return { success: false, message: 'Invalid 4-digit PIN for staff account. Please try again.' };
-              }
+        if (key && key.startsWith('orderrestro_staff_members_') && !staffKeysToCheck.includes(key)) {
+          staffKeysToCheck.push(key);
+        }
+      }
+
+      for (const key of staffKeysToCheck) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const staffList: AppUser[] = JSON.parse(raw);
+          const staffMatch = staffList.find(s => {
+            const staffEmail = s.email?.toLowerCase();
+            const staffPhone = (s.phone || '').replace(/[\s\-\(\)\+]/g, '');
+            return staffEmail === identifier || (cleanPhone.length >= 8 && staffPhone && staffPhone.includes(cleanPhone));
+          });
+          if (staffMatch) {
+            const isMatch = (staffMatch.manager_pin === pwd) ||
+                            (staffMatch.pin === pwd);
+            if (isMatch) {
+              const user: AppUser = { ...staffMatch, last_login_at: new Date().toISOString() };
+              this.setSessionUser(user);
+              let defaultRoute = '/orders';
+              if (user.role === 'SUPER_ADMIN') defaultRoute = '/super-admin';
+              else if (user.role === 'WAITER') defaultRoute = '/tables';
+              else if (user.role === 'KITCHEN_CHEF') defaultRoute = '/kds';
+              else if (user.role === 'STORE_KEEPER') defaultRoute = '/inventory';
+              else if (user.role === 'ACCOUNTANT') defaultRoute = '/accounting';
+              return { success: true, role: user.role, route: defaultRoute };
+            } else {
+              return { success: false, message: 'Invalid 4-digit PIN for staff account. Please try again.' };
             }
           }
         }
@@ -323,41 +332,88 @@ export class AuthService {
   }
 
   /**
-   * Fast Staff Numpad PIN Login with roster verification
+   * Fast Staff Numpad PIN Login with roster verification (Prioritizes Active Tenant)
    */
   loginWithPin(pin: string, staffName: string = 'Staff Member', role: UserRole = 'WAITER'): boolean {
     if (!pin || pin.length !== 4) return false;
 
-    // Check staff members across local rosters
     try {
+      // 1. Check active organization's staff roster FIRST to prevent cross-tenant collision
+      const activeOrgId = this.tenantService?.currentOrg?.id;
+      const staffKeysToCheck: string[] = [];
+      if (activeOrgId) {
+        staffKeysToCheck.push(`orderrestro_staff_members_${activeOrgId}`);
+      }
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('orderrestro_staff_members_')) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const staffList: AppUser[] = JSON.parse(raw);
-            const matched = staffList.find(s => (s.pin === pin || s.manager_pin === pin) && s.is_active);
-            if (matched) {
-              this.setSessionUser({ ...matched, last_login_at: new Date().toISOString() });
-              return true;
-            }
+        if (key && key.startsWith('orderrestro_staff_members_') && !staffKeysToCheck.includes(key)) {
+          staffKeysToCheck.push(key);
+        }
+      }
+
+      for (const key of staffKeysToCheck) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const staffList: AppUser[] = JSON.parse(raw);
+          const matched = staffList.find(s => (s.pin === pin || s.manager_pin === pin) && s.is_active);
+          if (matched) {
+            this.setSessionUser({ ...matched, last_login_at: new Date().toISOString() });
+            return true;
           }
         }
       }
 
-      // Check registered users
-      const registeredJson = localStorage.getItem(this.REGISTERED_USERS_KEY);
-      if (registeredJson) {
-        const usersList: { user: AppUser }[] = JSON.parse(registeredJson);
-        const match = usersList.find(u => (u.user?.manager_pin === pin || u.user?.pin === pin) && u.user?.is_active);
-        if (match) {
-          this.setSessionUser({ ...match.user, last_login_at: new Date().toISOString() });
-          return true;
+      // 2. Check registered users (checks both v3 and legacy v2)
+      const regKeys = [this.REGISTERED_USERS_KEY, 'orderrestro_registered_users_v2'];
+      for (const rk of regKeys) {
+        const registeredJson = localStorage.getItem(rk);
+        if (registeredJson) {
+          const usersList: any[] = JSON.parse(registeredJson);
+          const match = usersList.find(u => {
+            const usr = u.user || u;
+            return (usr.manager_pin === pin || usr.pin === pin || u.passwordPlain === pin) && usr.is_active !== false;
+          });
+          if (match) {
+            const usr = match.user || match;
+            this.setSessionUser({ ...usr, last_login_at: new Date().toISOString() });
+            return true;
+          }
         }
       }
     } catch {}
 
     return false;
+  }
+
+  /**
+   * Cloud-first Staff PIN Login directly verified with Supabase
+   */
+  async loginWithPinCloud(pin: string): Promise<boolean> {
+    if (!pin || pin.length !== 4) return false;
+
+    // Check Supabase Cloud first
+    if (this.supabaseService.client) {
+      try {
+        const activeOrgId = this.tenantService?.currentOrg?.id;
+        let query = this.supabaseService.from('app_users')
+          .select('*')
+          .eq('is_active', true)
+          .or(`pin.eq.${pin},manager_pin.eq.${pin}`);
+        if (activeOrgId && activeOrgId !== 'org-default') {
+          query = query.eq('organization_id', activeOrgId);
+        }
+        const { data, error } = await query.limit(1);
+        if (!error && data && data.length > 0) {
+          const dbUser = data[0];
+          this.setSessionUser({ ...dbUser, last_login_at: new Date().toISOString() });
+          return true;
+        }
+      } catch (err) {
+        console.warn('⚠️ [AuthService] Cloud PIN verification fallback to local:', err);
+      }
+    }
+
+    return this.loginWithPin(pin);
   }
 
   /**
@@ -481,22 +537,22 @@ export class AuthService {
 
   logout(): void {
     try {
-      const savedIdentifier = localStorage.getItem('orderrestro_saved_login_identifier');
-      const keysToRemove: string[] = [];
+      // Clear authenticated session tokens safely
+      localStorage.removeItem(this.SESSION_STORAGE_KEY);
+      localStorage.removeItem(this.LEGACY_SESSION_KEY);
+      localStorage.removeItem('orderrestro_live_till_cart_v1');
 
+      // Clear any live till cart keys across organizations
+      const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('orderrestro_') || key.startsWith('pos_') || key.startsWith('haj_'))) {
-          if (key !== 'orderrestro_saved_login_identifier') {
-            keysToRemove.push(key);
-          }
+        if (key && (key.startsWith('orderrestro_live_till_cart_') || key.startsWith('pos_till_cart_'))) {
+          keysToRemove.push(key);
         }
       }
       keysToRemove.forEach(k => localStorage.removeItem(k));
-
-      if (savedIdentifier) {
-        localStorage.setItem('orderrestro_saved_login_identifier', savedIdentifier);
-      }
+      // CRITICAL NOTE: Offline sync queues (orderrestro_offline_*), registered accounts (orderrestro_registered_users_*),
+      // audit logs, tenant definitions, and master data caches are safely PRESERVED so offline operations & data integrity never break!
     } catch {}
 
     this.currentUserSubject.next(null);

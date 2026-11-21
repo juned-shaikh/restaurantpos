@@ -20,7 +20,10 @@ export class OrderService {
 
   // Live cart broadcast for dual-screen customer display
   private readonly CHANNEL_NAME = 'orderrestro_live_till_broadcast';
-  private readonly STORAGE_KEY = 'orderrestro_live_till_cart_v1';
+  private get STORAGE_KEY(): string {
+    const orgId = this.tenantService?.currentOrg?.id || 'org-default';
+    return `orderrestro_live_till_cart_${orgId}`;
+  }
   private broadcastChannel: BroadcastChannel | null = null;
 
   private liveTillOrderSubject = new BehaviorSubject<Partial<Order> | null>(null);
@@ -103,10 +106,13 @@ export class OrderService {
   private persistOrdersLocally(): void {
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
     try {
-      // Retain all non-settled active orders + max 50 recent settled orders in localStorage
+      // Retain all non-settled active orders + max 50 most RECENT settled orders in localStorage
       // Older orders reside safely in Supabase Cloud without exhausting browser quota
       const active = this.activeOrders.filter(o => !o.is_settled && o.status !== 'SETTLED' && o.status !== 'CANCELLED');
-      const recentSettled = this.activeOrders.filter(o => o.is_settled || o.status === 'SETTLED' || o.status === 'CANCELLED').slice(0, 50);
+      const settled = this.activeOrders.filter(o => o.is_settled || o.status === 'SETTLED' || o.status === 'CANCELLED');
+      // Sort newest settled orders first so the most recent 50 are preserved
+      settled.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      const recentSettled = settled.slice(0, 50);
       const toStore = [...active, ...recentSettled];
       localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(toStore));
     } catch (e) {
@@ -141,6 +147,23 @@ export class OrderService {
         }));
         this.activeOrdersSubject.next(normalized);
         this.persistOrdersLocally();
+
+        // Sync local sequence counter with highest order number found today in Supabase Cloud
+        const today = new Date().toISOString().slice(0, 10);
+        const seqKey = `orderrestro_seq_${orgId}_${today}`;
+        const maxTodayNum = normalized.reduce((max, o) => {
+          if (o.created_at && o.created_at.startsWith(today)) {
+            const num = parseInt(o.order_number, 10);
+            return !isNaN(num) && num > max ? num : max;
+          }
+          return max;
+        }, 100);
+        try {
+          const currentSeq = parseInt(localStorage.getItem(seqKey) || '0', 10);
+          if (maxTodayNum > currentSeq) {
+            localStorage.setItem(seqKey, String(maxTodayNum));
+          }
+        } catch {}
       }
     } catch (err) {
       console.warn('⚠️ [OrderService] Supabase order load notice:', err);
@@ -219,6 +242,17 @@ export class OrderService {
             const updated = [item, ...this.activeOrders];
             this.activeOrdersSubject.next(updated);
             this.persistOrdersLocally();
+
+            // Realtime sequence sync: if another counter placed an order, advance our counter
+            const today = new Date().toISOString().slice(0, 10);
+            const num = parseInt(item.order_number, 10);
+            if (!isNaN(num)) {
+              const seqKey = `orderrestro_seq_${currentOrgId}_${today}`;
+              const cur = parseInt(localStorage.getItem(seqKey) || '0', 10);
+              if (num > cur) {
+                try { localStorage.setItem(seqKey, String(num)); } catch {}
+              }
+            }
           }
         } else if (payload.eventType === 'UPDATE') {
           const updated = this.activeOrders.map(o => o.id === item.id ? { ...o, ...item } : o);
@@ -355,7 +389,7 @@ export class OrderService {
   private initCrossTabSync(): void {
     // 1. Initial cart restoration from localStorage
     try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
+      const saved = localStorage.getItem(this.STORAGE_KEY) || localStorage.getItem('orderrestro_live_till_cart_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
         this.liveTillOrderSubject.next(parsed);
@@ -367,6 +401,11 @@ export class OrderService {
       try {
         this.broadcastChannel = new BroadcastChannel(this.CHANNEL_NAME);
         this.broadcastChannel.onmessage = (event) => {
+          const currentOrg = this.tenantService?.currentOrg?.id || 'org-default';
+          // Filter out messages belonging to a different tenant/organization
+          if (event.data?.orgId && event.data.orgId !== currentOrg) {
+            return;
+          }
           if (event.data?.type === 'LIVE_CART_UPDATE') {
             this.liveTillOrderSubject.next(event.data.payload);
           } else if (event.data?.type === 'ORDER_SETTLED') {
@@ -376,6 +415,7 @@ export class OrderService {
             if (current && this.broadcastChannel) {
               this.broadcastChannel.postMessage({
                 type: 'LIVE_CART_UPDATE',
+                orgId: currentOrg,
                 payload: current
               });
             }
@@ -387,7 +427,7 @@ export class OrderService {
     // 3. Fallback cross-window listener via storage events
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (event) => {
-        if (event.key === this.STORAGE_KEY) {
+        if (event.key === this.STORAGE_KEY || event.key === 'orderrestro_live_till_cart_v1') {
           try {
             const data = event.newValue ? JSON.parse(event.newValue) : null;
             this.liveTillOrderSubject.next(data);
@@ -398,13 +438,14 @@ export class OrderService {
   }
 
   requestLiveCartSync(): void {
+    const currentOrg = this.tenantService?.currentOrg?.id || 'org-default';
     if (this.broadcastChannel) {
       try {
-        this.broadcastChannel.postMessage({ type: 'REQUEST_CART' });
+        this.broadcastChannel.postMessage({ type: 'REQUEST_CART', orgId: currentOrg });
       } catch (e) {}
     }
     try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
+      const saved = localStorage.getItem(this.STORAGE_KEY) || localStorage.getItem('orderrestro_live_till_cart_v1');
       if (saved) {
         this.liveTillOrderSubject.next(JSON.parse(saved));
       }
@@ -415,6 +456,7 @@ export class OrderService {
    * Broadcasts the cashier's active till cart to the secondary customer-facing display in real time
    */
   broadcastTillCart(cartState: Partial<Order> | null): void {
+    const currentOrg = this.tenantService?.currentOrg?.id || 'org-default';
     this.liveTillOrderSubject.next(cartState);
     try {
       if (cartState && cartState.items && cartState.items.length > 0) {
@@ -428,6 +470,7 @@ export class OrderService {
       try {
         this.broadcastChannel.postMessage({
           type: 'LIVE_CART_UPDATE',
+          orgId: currentOrg,
           payload: cartState
         });
       } catch (e) {}
