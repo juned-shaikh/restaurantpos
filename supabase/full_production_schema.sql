@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS public.app_users (
   full_name TEXT NOT NULL,
   email TEXT UNIQUE,
   phone TEXT,
-  password TEXT DEFAULT 'Owner@123',
+  password TEXT,
   role TEXT NOT NULL DEFAULT 'CASHIER', -- 'SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'CASHIER', 'WAITER', 'KITCHEN_CHEF'
-  manager_pin TEXT DEFAULT '9999',      -- 4-Digit Security Override PIN
+  manager_pin TEXT,                     -- 4-Digit Security Override PIN
   hourly_rate NUMERIC(10, 2) DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   last_login_at TIMESTAMPTZ,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.app_users (
 );
 
 -- Ensure password column exists if table was previously created
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS password TEXT DEFAULT 'Owner@123';
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS password TEXT;
 ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 
 -- 3. MENU CATEGORIES & DISHES
@@ -214,12 +214,12 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================
--- SEED SUPER ADMIN (PRODUCT OWNER) & STORE MANAGERS
+-- INITIAL SUPER ADMIN & MANAGER ROLES (Must be provisioned with Supabase Auth)
 -- ==============================================================================
-INSERT INTO public.app_users (id, organization_id, branch_id, full_name, email, phone, password, role, manager_pin, is_active)
+INSERT INTO public.app_users (id, organization_id, branch_id, full_name, email, phone, role, is_active)
 VALUES
-  ('usr-super-owner-01', 'org-cafe-01', 'branch-01', 'Juned Khan (Product Owner & Super Admin)', 'owner@restaurantpos.com', '+91 98765 43210', 'Owner@123', 'SUPER_ADMIN', '9999', true),
-  ('usr-super-owner-02', 'org-cafe-01', 'branch-01', 'Juned Khan (Founder)', 'juned@brewbeans.com', '+91 98765 43210', 'Owner@123', 'SUPER_ADMIN', '9999', true),
-  ('usr-manager-01', 'org-cafe-01', 'branch-01', 'Zuber (Manager)', 'zuber@brewbeans.com', '+91 98765 43211', 'password123', 'ORG_ADMIN', '1234', true)
+  ('usr-super-owner-01', 'org-cafe-01', 'branch-01', 'Juned Khan (Product Owner & Super Admin)', 'owner@restaurantpos.com', '+91 98765 43210', 'SUPER_ADMIN', true),
+  ('usr-super-owner-02', 'org-cafe-01', 'branch-01', 'Juned Khan (Founder)', 'juned@brewbeans.com', '+91 98765 43210', 'SUPER_ADMIN', true),
+  ('usr-manager-01', 'org-cafe-01', 'branch-01', 'Zuber (Manager)', 'zuber@brewbeans.com', '+91 98765 43211', 'ORG_ADMIN', true)
 ON CONFLICT (id) DO UPDATE 
-SET password = EXCLUDED.password, role = EXCLUDED.role, manager_pin = EXCLUDED.manager_pin;
+SET role = EXCLUDED.role, full_name = EXCLUDED.full_name;

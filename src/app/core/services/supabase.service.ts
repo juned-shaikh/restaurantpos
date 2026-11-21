@@ -1,12 +1,6 @@
 import { Injectable } from '@angular/core';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
-
-export interface SupabaseClient {
-  from(tableName: string): any;
-  channel(name: string): any;
-  auth?: any;
-  [key: string]: any;
-}
 
 @Injectable({
   providedIn: 'root'
@@ -26,25 +20,20 @@ export class SupabaseService {
     if (rawUrl && key && rawUrl.startsWith('http')) {
       const url = rawUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
       try {
-        const createClientFn = (window as any).supabase?.createClient;
-        if (createClientFn) {
-          this.supabase = createClientFn(url, key, {
-            auth: {
-              persistSession: true,
-              autoRefreshToken: true
-            },
-            realtime: {
-              params: {
-                eventsPerSecond: 10
-              }
+        this.supabase = createClient(url, key, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false
+          },
+          realtime: {
+            params: {
+              eventsPerSecond: 10
             }
-          });
-          this.isConnected = true;
-          console.log('✅ [Supabase] Connected successfully to Cloud Database:', url);
-        } else {
-          this.isConnected = false;
-          console.log('ℹ️ [Supabase] Waiting for window.supabase CDN to be ready.');
-        }
+          }
+        });
+        this.isConnected = true;
+        console.log('✅ [Supabase] Bundled client connected to Cloud Database:', url);
       } catch (err) {
         console.error('❌ [Supabase] Failed to initialize client:', err);
         this.isConnected = false;
@@ -55,7 +44,7 @@ export class SupabaseService {
   }
 
   /**
-   * Access to Supabase client
+   * Direct access to typed Supabase client
    */
   get client(): SupabaseClient | null {
     if (!this.supabase) {
@@ -65,19 +54,35 @@ export class SupabaseService {
   }
 
   /**
-   * Helper to query tables safely
+   * Safe helper to query tables
    */
-  from(tableName: string) {
+  from(tableName: string): any {
     const c = this.client;
     if (!c) {
       return {
         select: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') }),
         insert: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') }),
         update: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') }),
-        delete: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') })
+        delete: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') }),
+        upsert: () => Promise.resolve({ data: null, error: new Error('Supabase client not initialized') })
       };
     }
     return c.from(tableName);
+  }
+
+  /**
+   * Call a Supabase RPC Database Function atomically
+   */
+  async rpc(functionName: string, params?: Record<string, any>): Promise<{ data: any; error: any }> {
+    const c = this.client;
+    if (!c) {
+      return { data: null, error: new Error('Supabase client not initialized') };
+    }
+    try {
+      return await c.rpc(functionName, params);
+    } catch (err: any) {
+      return { data: null, error: err };
+    }
   }
 
   /**
@@ -94,7 +99,7 @@ export class SupabaseService {
     return this.supabase
       .channel(channelName)
       .on(
-        'postgres_changes',
+        'postgres_changes' as any,
         { event: '*', schema: 'public', table: tableName, filter },
         (payload: any) => callback(payload)
       )

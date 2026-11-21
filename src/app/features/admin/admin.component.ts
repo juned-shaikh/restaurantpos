@@ -28,7 +28,7 @@ export class AdminComponent implements OnInit {
   isTaxInclusive: boolean = false;
   cgstPct: number = 2.5;
   sgstPct: number = 2.5;
-  managerPin: string = '1234';
+  managerPin: string = '';
 
   // Dynamic Module Toggles (For Simple Cafe vs Full Restaurant)
   featureFlags: BranchFeatureFlags = {

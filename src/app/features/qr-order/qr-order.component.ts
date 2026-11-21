@@ -207,7 +207,7 @@ export class QrOrderComponent implements OnInit {
     this.toast.info(`Bill requested for Table ${this.currentTable.table_number}! Cashier notified.`, 'Bill Requested');
   }
 
-  submitGuestOrder(): void {
+  async submitGuestOrder(): Promise<void> {
     if (this.isSubmitting) return;
 
     if (this.guestCart.length === 0 || !this.currentTable) {
@@ -230,7 +230,7 @@ export class QrOrderComponent implements OnInit {
 
     this.isSubmitting = true;
     try {
-      this.orderService.createOrder(
+      await this.orderService.createOrder(
         this.currentTable.id,
         this.currentTable.table_number,
         'QR_ORDER',

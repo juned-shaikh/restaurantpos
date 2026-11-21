@@ -31,7 +31,7 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
   newOwnerName = '';
   newEmail = '';
   newPhone = '';
-  newPassword = 'Owner@123';
+  newPassword = '';
   showPassword = false;
   newCity = 'Mumbai';
   newTier: SubscriptionTier = 'GROWTH';
@@ -115,7 +115,7 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
     this.newCity = 'Mumbai';
     this.newTier = 'GROWTH';
     this.newMaxBranches = 1;
-    this.newPassword = 'Owner@123';
+    this.newPassword = '';
     this.seedStarterMenu = false;
     this.seedStarterTables = false;
     this.showPassword = false;
@@ -137,7 +137,8 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
 
     const newSlug = this.newCafeName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
     const finalEmail = (this.newEmail.trim() || `${newSlug}@cafeclient.com`).toLowerCase();
-    const finalPassword = this.newPassword.trim() || 'Owner@123';
+    const finalPassword = this.newPassword.trim() || `Cafe#${Math.floor(100000 + Math.random() * 900000)}`;
+    const generatedPin = String(Math.floor(1000 + Math.random() * 9000));
 
     const newTenant: SaasTenantSummary = {
       id: `org-cafe-${Date.now()}`,
@@ -193,7 +194,7 @@ export class SuperAdminComponent implements OnInit, OnDestroy {
       email: finalEmail,
       phone: newTenant.owner_phone,
       password: finalPassword,
-      managerPin: '9999',
+      managerPin: generatedPin,
       loginUrl: `${originUrl}/login`,
       tier: newTenant.tier,
       tenantId: newTenant.id

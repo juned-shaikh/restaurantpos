@@ -25,7 +25,6 @@ export interface SecurityApprovalRequest {
 })
 export class SecurityService {
   private readonly PIN_STORAGE_KEY = 'orderrestro_manager_pin_v1';
-  private defaultManagerPin = '1234';
 
   private activeApprovalRequestSubject = new BehaviorSubject<SecurityApprovalRequest | null>(null);
   activeApprovalRequest$: Observable<SecurityApprovalRequest | null> = this.activeApprovalRequestSubject.asObservable();
@@ -37,9 +36,9 @@ export class SecurityService {
 
   get currentManagerPin(): string {
     try {
-      return localStorage.getItem(this.PIN_STORAGE_KEY) || this.defaultManagerPin;
+      return localStorage.getItem(this.PIN_STORAGE_KEY) || '';
     } catch {
-      return this.defaultManagerPin;
+      return '';
     }
   }
 
@@ -66,13 +65,15 @@ export class SecurityService {
   verifyPin(inputPin: string): boolean {
     if (!inputPin) return false;
     const cleanPin = inputPin.trim();
+    if (!cleanPin) return false;
 
-    // 1. Verify against configured Manager PIN
-    if (cleanPin === this.currentManagerPin) {
+    // 1. Verify against explicitly configured Manager PIN
+    const configuredPin = this.currentManagerPin;
+    if (configuredPin && cleanPin === configuredPin) {
       return true;
     }
 
-    // 2. Verify against active registered managers/admins from local cache (Correct Key!)
+    // 2. Verify against active registered managers/admins from local cache (Strictly No 1234/9999 bypass)
     try {
       const orgId = this.tenantService.currentOrg?.id || 'org-default';
       const keysToCheck = [
@@ -89,7 +90,8 @@ export class SecurityService {
         if (Array.isArray(parsed)) {
           const isAuthorized = parsed.some((item: any) => {
             const s = item.user || item;
-            const pinMatch = (s.pin === cleanPin || s.manager_pin === cleanPin || item.passwordPlain === cleanPin);
+            const validUserPin = s.manager_pin || s.pin;
+            const pinMatch = validUserPin && (validUserPin === cleanPin);
             const isManagerRole = ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'RESTAURANT_MANAGER'].includes(s.role);
             return s.is_active !== false && isManagerRole && pinMatch;
           });
@@ -102,32 +104,26 @@ export class SecurityService {
   }
 
   /**
-   * Real Supabase Cloud verification for Manager PIN authorization
+   * Real Supabase Cloud verification for Manager PIN authorization using secure RPC
    */
   async verifyPinCloud(inputPin: string): Promise<boolean> {
     if (!inputPin) return false;
     const cleanPin = inputPin.trim();
+    if (!cleanPin) return false;
 
     // 1. Instant local check
     if (this.verifyPin(cleanPin)) return true;
 
-    // 2. Verify directly against Supabase Cloud app_users
+    // 2. Verify via Supabase RPC function (Prevents querying user tables directly from frontend)
     if (this.supabaseService.client) {
       try {
-        const orgId = this.tenantService.currentOrg?.id;
-        let query = this.supabaseService.from('app_users')
-          .select('id, role, pin, manager_pin, is_active')
-          .eq('is_active', true)
-          .or(`pin.eq.${cleanPin},manager_pin.eq.${cleanPin}`);
-        if (orgId && orgId !== 'org-default') {
-          query = query.eq('organization_id', orgId);
-        }
-        const { data, error } = await query.limit(5);
-        if (!error && data && data.length > 0) {
-          const isAuthorized = data.some((u: any) =>
-            ['SUPER_ADMIN', 'ORG_ADMIN', 'BRANCH_MANAGER', 'RESTAURANT_MANAGER'].includes(u.role)
-          );
-          if (isAuthorized) return true;
+        const orgId = this.tenantService.currentOrg?.id || '';
+        const { data, error } = await this.supabaseService.rpc('verify_manager_pin', {
+          p_pin: cleanPin,
+          p_org_id: orgId
+        });
+        if (!error && data === true) {
+          return true;
         }
       } catch (e) {
         console.warn('⚠️ [SecurityService] Cloud PIN verification fallback to local:', e);

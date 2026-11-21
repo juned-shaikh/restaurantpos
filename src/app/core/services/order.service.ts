@@ -492,6 +492,33 @@ export class OrderService {
     return this.activeOrders.find(o => o.table_id === tableId && !o.is_settled);
   }
 
+  /**
+   * Atomic sequence generation via PostgreSQL RPC to prevent race conditions across multiple counters & QR orders
+   */
+  async getNextAtomicOrderNumber(orgId: string): Promise<string> {
+    const client = this.supabaseService.client;
+    if (client) {
+      try {
+        const { data, error } = await this.supabaseService.rpc('get_next_order_number', {
+          p_org_id: orgId
+        });
+        if (!error && data) {
+          const atomicNum = String(data);
+          const today = new Date().toISOString().slice(0, 10);
+          const seqKey = `orderrestro_seq_${orgId}_${today}`;
+          try {
+            localStorage.setItem(seqKey, atomicNum);
+          } catch {}
+          return atomicNum;
+        }
+      } catch (err) {
+        console.warn('⚠️ [OrderService] Cloud RPC get_next_order_number unavailable, fallback to local sequence:', err);
+      }
+    }
+
+    return this.generateNextOrderNumber(orgId);
+  }
+
   private generateNextOrderNumber(orgId: string): string {
     const today = new Date().toISOString().slice(0, 10);
     const seqKey = `orderrestro_seq_${orgId}_${today}`;
@@ -526,7 +553,7 @@ export class OrderService {
   /**
    * Places a new order or automatically merges additional items into an existing running table bill
    */
-  createOrder(
+  async createOrder(
     tableId: string | undefined,
     tableNumber: string | undefined,
     orderType: Order['order_type'],
@@ -534,7 +561,7 @@ export class OrderService {
     customerName?: string,
     customerPhone?: string,
     discountPct: number = 0
-  ): Order {
+  ): Promise<Order> {
     // 1. If table is already occupied and has an active running bill, append the new items!
     if (tableId && (orderType === 'DINE_IN' || orderType === 'QR_ORDER')) {
       const existingOrder = this.getOrderByTableId(tableId);
@@ -559,7 +586,7 @@ export class OrderService {
     }));
 
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
-    const orderNumber = this.generateNextOrderNumber(orgId);
+    const orderNumber = await this.getNextAtomicOrderNumber(orgId);
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       organization_id: orgId,

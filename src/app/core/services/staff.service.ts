@@ -131,7 +131,7 @@ export class StaffService {
           role: dbUser.role || 'WAITER',
           phone: dbUser.phone || '',
           email: dbUser.email || '',
-          manager_pin: dbUser.manager_pin || '1234',
+          manager_pin: dbUser.manager_pin || '',
           hourly_rate: Number(dbUser.hourly_rate) || 150,
           is_active: dbUser.is_active !== false,
           created_at: dbUser.created_at || new Date().toISOString()
@@ -207,7 +207,7 @@ export class StaffService {
             role: dbUser.role || 'WAITER',
             phone: dbUser.phone || '',
             email: dbUser.email || '',
-            manager_pin: dbUser.manager_pin || '1234',
+            manager_pin: dbUser.manager_pin || '',
             hourly_rate: Number(dbUser.hourly_rate) || 150,
             is_active: dbUser.is_active !== false,
             created_at: dbUser.created_at || new Date().toISOString()
@@ -229,7 +229,7 @@ export class StaffService {
         const unsynced = currentLocalStaff.filter(s => !cloudIds.has(s.id));
         for (const localMember of unsynced) {
           const cleanPhone = (localMember.phone || '').replace(/[\s\-\(\)\+]/g, '');
-          const pin = localMember.manager_pin || localMember.pin || '1234';
+          const pin = localMember.manager_pin || localMember.pin || '';
           const validEmail = localMember.email?.trim() || (cleanPhone ? `${cleanPhone}@pos.local` : `${localMember.id}@pos.local`);
           this.supabaseService.from('app_users').upsert({
             id: localMember.id,
@@ -271,12 +271,10 @@ export class StaffService {
   verifyPin(userId: string, pin: string): boolean {
     const p = pin.trim();
     if (!p) return false;
-    // Master emergency override PIN
-    if (p === '9999') return true;
 
     const user = this.staffMembers.find(s => s.id === userId);
-    if (!user) return p === '1234';
-    return (user.manager_pin && user.manager_pin === p) || (user.pin && user.pin === p) || p === '1234';
+    if (!user) return false;
+    return (!!user.manager_pin && user.manager_pin === p) || (!!user.pin && user.pin === p);
   }
 
   async addStaffMember(staff: Partial<AppUser> & { pin?: string; monthly_salary?: number }): Promise<{ success: boolean; user?: AppUser; message?: string }> {
@@ -310,7 +308,7 @@ export class StaffService {
       }
     }
 
-    const assignedPin = staff.manager_pin || staff.pin || '1234';
+    const assignedPin = staff.manager_pin || staff.pin || String(Math.floor(1000 + Math.random() * 9000));
     const baseSalary = Number(staff.monthly_salary) || (staff.hourly_rate ? staff.hourly_rate * 8 * 26 : 16000);
     const validEmail = staff.email && staff.email.trim() ? staff.email.trim() : `${cleanPhone}@pos.local`;
     const targetOrgId = staff.organization_id || this.currentOrgId;
@@ -448,7 +446,7 @@ export class StaffService {
       return { success: false, message: 'Staff member not found.' };
     }
 
-    const pin = updates.manager_pin || currentStaff.manager_pin || currentStaff.pin || '1234';
+    const pin = updates.manager_pin || currentStaff.manager_pin || currentStaff.pin || '';
     const salary = Number(updates.monthly_salary) || currentStaff.monthly_salary || 16000;
     const validEmail = `${cleanPhone}@pos.local`;
 

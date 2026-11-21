@@ -87,7 +87,7 @@ export class StaffComponent implements OnInit {
       return;
     }
 
-    const pin = this.newStaffPin.trim() || '1234';
+    const pin = this.newStaffPin.trim() || String(Math.floor(1000 + Math.random() * 9000));
 
     const res = await this.staffService.addStaffMember({
       full_name: name,
@@ -112,7 +112,7 @@ export class StaffComponent implements OnInit {
     this.editStaffName = staff.full_name || '';
     this.editStaffRole = staff.role || 'WAITER';
     this.editStaffPhone = (staff.phone || '').replace(/\D/g, '');
-    this.editStaffPin = staff.manager_pin || staff.pin || '1234';
+    this.editStaffPin = staff.manager_pin || staff.pin || '';
     this.showEditStaffModal = true;
   }
 
@@ -136,7 +136,7 @@ export class StaffComponent implements OnInit {
       return;
     }
 
-    const pin = this.editStaffPin.trim() || '1234';
+    const pin = this.editStaffPin.trim();
 
     const res = await this.staffService.updateStaffMember(this.editingStaffId, {
       full_name: name,

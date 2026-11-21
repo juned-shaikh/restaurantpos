@@ -476,7 +476,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     }
   }
 
-  sendToKitchen(): void {
+  async sendToKitchen(): Promise<void> {
     if (this.cartItems.length === 0) {
       this.toast.warning('Cart is empty! Select dishes to send to kitchen.');
       return;
@@ -496,7 +496,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     // Pass ONLY unsent new items if table has an existing order running; otherwise all cart items
     const itemsToSend = this.activeOrderToSettle ? unsentItems : this.cartItems;
 
-    const updatedOrNewOrder = this.orderService.createOrder(
+    const updatedOrNewOrder = await this.orderService.createOrder(
       this.orderType === 'DINE_IN' ? this.selectedTableId : undefined,
       this.orderType === 'DINE_IN' ? table?.table_number : 'Takeaway',
       this.orderType,
@@ -514,7 +514,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.sendToKitchen();
   }
 
-  openPayment(order?: Order): void {
+  async openPayment(order?: Order): Promise<void> {
     // 1. Prioritize explicitly passed order, or currently active running table order
     let existing = order || this.activeOrderToSettle || this.orderService.getOrderByTableId(this.selectedTableId);
 
@@ -542,7 +542,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
         return;
       }
       const table = this.tables.find(t => t.id === this.selectedTableId);
-      const newOrder = this.orderService.createOrder(
+      const newOrder = await this.orderService.createOrder(
         this.orderType === 'DINE_IN' ? this.selectedTableId : undefined,
         this.orderType === 'DINE_IN' ? table?.table_number : 'Takeaway',
         this.orderType,
