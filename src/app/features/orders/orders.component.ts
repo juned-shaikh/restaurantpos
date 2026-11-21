@@ -9,6 +9,7 @@ import { PrintService } from '../../core/services/print.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { SecurityService } from '../../core/services/security.service';
 import { ToastService } from '../../core/services/toast.service';
+import { QrCodeService } from '../../core/services/qr-code.service';
 import { MenuItem, MenuCategory } from '../../core/models/menu.model';
 import { OrderItem, Order } from '../../core/models/order.model';
 import { Table } from '../../core/models/table.model';
@@ -96,6 +97,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   cashReceived: number = 0;
   paymentMode: 'CASH' | 'UPI' | 'CARD' | 'SPLIT' = 'UPI';
   upiIntentQrUri: string = '';
+  upiQrDataUrl: string = '';
   splitPayments: SplitPayment[] = [];
   partPaymentAmount: number = 0;
   partPaymentMode: 'CASH' | 'UPI' | 'CARD' = 'CASH';
@@ -136,6 +138,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     public printService: PrintService,
     public tenantService: TenantService,
     public securityService: SecurityService,
+    public qrCodeService: QrCodeService,
     private route: ActivatedRoute,
     private toast: ToastService
   ) {}
@@ -566,7 +569,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.paymentMode = mode;
   }
 
-  updateUpiString(): void {
+  async updateUpiString(): Promise<void> {
     if (!this.activeOrderToSettle) return;
     const branch = this.tenantService.activeBranch;
     const amount = this.paymentMode === 'SPLIT' ? this.remainingBalance : this.activeOrderToSettle.total_amount;
@@ -576,6 +579,15 @@ export class OrdersComponent implements OnInit, OnDestroy {
       amount,
       this.activeOrderToSettle.order_number
     );
+    if (this.upiIntentQrUri) {
+      try {
+        this.upiQrDataUrl = await this.qrCodeService.generateDataUrl(this.upiIntentQrUri, { width: 180, margin: 1 });
+      } catch (err) {
+        console.warn('Local QR generation error:', err);
+      }
+    } else {
+      this.upiQrDataUrl = '';
+    }
   }
 
   completeSettlement(): void {

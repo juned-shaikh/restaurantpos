@@ -4,6 +4,7 @@ import { InventoryItem, Recipe, WasteLog, UnitOfMeasure } from '../models/invent
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
 import { OfflineSyncService } from './offline-sync.service';
+import { StorageService } from './storage.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,7 +44,8 @@ export class InventoryService {
   constructor(
     private supabaseService: SupabaseService,
     private tenantService: TenantService,
-    private offlineSync: OfflineSyncService
+    private offlineSync: OfflineSyncService,
+    private storageService: StorageService
   ) {
     this.initInitialState();
     this.initSupabaseSync();
@@ -64,26 +66,26 @@ export class InventoryService {
     return this.wasteLogsSubject.value;
   }
 
-  private initInitialState(): void {
-    // 1. Load from localStorage if present for fast render
+  private async initInitialState(): Promise<void> {
+    // 1. Load from IndexedDB/StorageService for fast render
     try {
-      const savedItems = localStorage.getItem(this.STORAGE_KEY_ITEMS);
-      if (savedItems) {
-        this.ingredientsSubject.next(JSON.parse(savedItems));
+      const savedItems = await this.storageService.getItem<InventoryItem[]>(this.STORAGE_KEY_ITEMS);
+      if (savedItems && Array.isArray(savedItems)) {
+        this.ingredientsSubject.next(savedItems);
       } else {
         this.ingredientsSubject.next([]);
       }
 
-      const savedWaste = localStorage.getItem(this.STORAGE_KEY_WASTE);
-      if (savedWaste) {
-        this.wasteLogsSubject.next(JSON.parse(savedWaste));
+      const savedWaste = await this.storageService.getItem<WasteLog[]>(this.STORAGE_KEY_WASTE);
+      if (savedWaste && Array.isArray(savedWaste)) {
+        this.wasteLogsSubject.next(savedWaste);
       } else {
         this.wasteLogsSubject.next([]);
       }
 
-      const savedRecipes = localStorage.getItem(this.STORAGE_KEY_RECIPES);
-      if (savedRecipes) {
-        this.recipesSubject.next(JSON.parse(savedRecipes));
+      const savedRecipes = await this.storageService.getItem<Recipe[]>(this.STORAGE_KEY_RECIPES);
+      if (savedRecipes && Array.isArray(savedRecipes)) {
+        this.recipesSubject.next(savedRecipes);
       } else {
         this.recipesSubject.next([]);
       }
@@ -96,25 +98,19 @@ export class InventoryService {
 
   public async loadInventoryForOrg(orgId: string): Promise<void> {
     try {
-      const savedItems = localStorage.getItem(`orderrestro_inventory_items_${orgId}`);
-      if (savedItems) {
-        this.ingredientsSubject.next(JSON.parse(savedItems));
-      } else {
-        this.ingredientsSubject.next([]);
+      const savedItems = await this.storageService.getItem<InventoryItem[]>(`orderrestro_inventory_items_${orgId}`);
+      if (savedItems && Array.isArray(savedItems)) {
+        this.ingredientsSubject.next(savedItems);
       }
 
-      const savedWaste = localStorage.getItem(`orderrestro_waste_logs_${orgId}`);
-      if (savedWaste) {
-        this.wasteLogsSubject.next(JSON.parse(savedWaste));
-      } else {
-        this.wasteLogsSubject.next([]);
+      const savedWaste = await this.storageService.getItem<WasteLog[]>(`orderrestro_waste_logs_${orgId}`);
+      if (savedWaste && Array.isArray(savedWaste)) {
+        this.wasteLogsSubject.next(savedWaste);
       }
 
-      const savedRecipes = localStorage.getItem(`orderrestro_recipes_${orgId}`);
-      if (savedRecipes) {
-        this.recipesSubject.next(JSON.parse(savedRecipes));
-      } else {
-        this.recipesSubject.next([]);
+      const savedRecipes = await this.storageService.getItem<Recipe[]>(`orderrestro_recipes_${orgId}`);
+      if (savedRecipes && Array.isArray(savedRecipes)) {
+        this.recipesSubject.next(savedRecipes);
       }
     } catch (e) {}
 
@@ -248,16 +244,12 @@ export class InventoryService {
 
   private setIngredientsState(items: InventoryItem[]): void {
     this.ingredientsSubject.next(items);
-    try {
-      localStorage.setItem(this.STORAGE_KEY_ITEMS, JSON.stringify(items));
-    } catch {}
+    this.storageService.setItem(this.STORAGE_KEY_ITEMS, items);
   }
 
   private setWasteLogsState(logs: WasteLog[]): void {
     this.wasteLogsSubject.next(logs);
-    try {
-      localStorage.setItem(this.STORAGE_KEY_WASTE, JSON.stringify(logs));
-    } catch {}
+    this.storageService.setItem(this.STORAGE_KEY_WASTE, logs);
   }
 
   addIngredient(item: {

@@ -7,6 +7,7 @@ import { TenantService } from './tenant.service';
 import { StaffService } from './staff.service';
 import { AuthService } from './auth.service';
 import { OfflineSyncService } from './offline-sync.service';
+import { StorageService } from './storage.service';
 
 export interface MonthlyOverheads {
   store_rent: number;
@@ -68,7 +69,8 @@ export class FinanceService {
     private tenantService: TenantService,
     private staffService: StaffService,
     private authService: AuthService,
-    private offlineSync: OfflineSyncService
+    private offlineSync: OfflineSyncService,
+    private storageService: StorageService
   ) {
     this.initInitialState();
     this.recalculateBudgets();
@@ -87,27 +89,27 @@ export class FinanceService {
   }
 
   /**
-   * 1. Load initial cache from localStorage immediately for offline-first zero-latency UI
+   * 1. Load initial cache from IndexedDB / StorageService immediately for offline-first zero-latency UI
    */
-  private initInitialState(): void {
+  private async initInitialState(): Promise<void> {
     try {
-      const savedExpenses = localStorage.getItem(this.STORAGE_KEY_EXPENSES);
-      if (savedExpenses) {
-        this.expensesSubject.next(JSON.parse(savedExpenses));
+      const savedExpenses = await this.storageService.getItem<Expense[]>(this.STORAGE_KEY_EXPENSES);
+      if (savedExpenses && Array.isArray(savedExpenses)) {
+        this.expensesSubject.next(savedExpenses);
       } else {
         this.expensesSubject.next([]);
       }
 
-      const savedClosings = localStorage.getItem(this.STORAGE_KEY_CASH_CLOSINGS);
-      if (savedClosings) {
-        this.cashClosingsSubject.next(JSON.parse(savedClosings));
+      const savedClosings = await this.storageService.getItem<CashClosing[]>(this.STORAGE_KEY_CASH_CLOSINGS);
+      if (savedClosings && Array.isArray(savedClosings)) {
+        this.cashClosingsSubject.next(savedClosings);
       } else {
         this.cashClosingsSubject.next([]);
       }
 
-      const savedOverheads = localStorage.getItem(this.STORAGE_KEY_OVERHEADS);
+      const savedOverheads = await this.storageService.getItem<MonthlyOverheads>(this.STORAGE_KEY_OVERHEADS);
       if (savedOverheads) {
-        this.overheads = JSON.parse(savedOverheads);
+        this.overheads = savedOverheads;
       }
     } catch {
       this.expensesSubject.next([]);
@@ -118,18 +120,14 @@ export class FinanceService {
   public async loadFinanceForOrg(orgId: string): Promise<void> {
     // 1. Try local storage cache for this org
     try {
-      const savedExpenses = localStorage.getItem(`orderrestro_accounting_expenses_${orgId}`);
-      if (savedExpenses) {
-        this.expensesSubject.next(JSON.parse(savedExpenses));
-      } else {
-        this.expensesSubject.next([]);
+      const savedExpenses = await this.storageService.getItem<Expense[]>(`orderrestro_accounting_expenses_${orgId}`);
+      if (savedExpenses && Array.isArray(savedExpenses)) {
+        this.expensesSubject.next(savedExpenses);
       }
 
-      const savedClosings = localStorage.getItem(`orderrestro_accounting_cash_closings_${orgId}`);
-      if (savedClosings) {
-        this.cashClosingsSubject.next(JSON.parse(savedClosings));
-      } else {
-        this.cashClosingsSubject.next([]);
+      const savedClosings = await this.storageService.getItem<CashClosing[]>(`orderrestro_accounting_cash_closings_${orgId}`);
+      if (savedClosings && Array.isArray(savedClosings)) {
+        this.cashClosingsSubject.next(savedClosings);
       }
 
       this.recalculateBudgets();
@@ -220,16 +218,12 @@ export class FinanceService {
   private setExpensesState(expenses: Expense[]): void {
     this.expensesSubject.next(expenses);
     this.recalculateBudgets();
-    try {
-      localStorage.setItem(this.STORAGE_KEY_EXPENSES, JSON.stringify(expenses));
-    } catch {}
+    this.storageService.setItem(this.STORAGE_KEY_EXPENSES, expenses);
   }
 
   private setCashClosingsState(closings: CashClosing[]): void {
     this.cashClosingsSubject.next(closings);
-    try {
-      localStorage.setItem(this.STORAGE_KEY_CASH_CLOSINGS, JSON.stringify(closings));
-    } catch {}
+    this.storageService.setItem(this.STORAGE_KEY_CASH_CLOSINGS, closings);
   }
 
   private async seedInitialExpenses(): Promise<void> {
@@ -317,9 +311,7 @@ export class FinanceService {
       utilities: Number(updated.utilities) || 0,
       staff_payroll: Number(updated.staff_payroll) || 0
     };
-    try {
-      localStorage.setItem(this.STORAGE_KEY_OVERHEADS, JSON.stringify(this.overheads));
-    } catch {}
+    this.storageService.setItem(this.STORAGE_KEY_OVERHEADS, this.overheads);
   }
 
   /**

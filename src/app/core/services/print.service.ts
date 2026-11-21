@@ -2,12 +2,15 @@ import { Injectable } from '@angular/core';
 import { Order } from '../models/order.model';
 import { KotTicket } from '../models/kds.model';
 import { Branch } from '../models/tenant.model';
+import { QrCodeService } from './qr-code.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PrintService {
   private iframeId = 'pos-silent-thermal-printer-frame';
+
+  constructor(private qrCodeService: QrCodeService) {}
 
   private getOrCreatePrintIframe(): HTMLIFrameElement {
     let iframe = document.getElementById(this.iframeId) as HTMLIFrameElement;
@@ -27,9 +30,9 @@ export class PrintService {
 
   /**
    * Generates and prints a commercial 80mm / 58mm thermal tax invoice or pre-bill
-   * Directly triggers without browser popup blocks. Includes Dynamic UPI QR code.
+   * Directly triggers without browser popup blocks. Includes Offline-Native UPI QR code.
    */
-  printOrderReceipt(order: Order, branch: Branch, isProforma: boolean = false, paperWidthMm: number = 80): void {
+  async printOrderReceipt(order: Order, branch: Branch, isProforma: boolean = false, paperWidthMm: number = 80): Promise<void> {
     const iframe = this.getOrCreatePrintIframe();
     const doc = iframe.contentWindow?.document || iframe.contentDocument;
     if (!doc) return;
@@ -39,7 +42,16 @@ export class PrintService {
     const upiPayee = encodeURIComponent(branch.upi_payee_name || branch.name);
     const upiAmount = order.total_amount.toFixed(2);
     const upiUrl = upiVpa ? `upi://pay?pa=${upiVpa}&pn=${upiPayee}&am=${upiAmount}&cu=INR&tn=Order%20${order.order_number}` : '';
-    const qrApiUrl = upiUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUrl)}` : '';
+    
+    // Offline Client-side QR generator (0 network latency, 0 external API calls)
+    let qrDataUrl = '';
+    if (upiUrl) {
+      try {
+        qrDataUrl = await this.qrCodeService.generateDataUrl(upiUrl, { width: 150, margin: 1 });
+      } catch (e) {
+        console.warn('[PrintService] Local QR generation error:', e);
+      }
+    }
 
     const itemsHtml = order.items.map(item => `
       <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin: 3px 0;">
@@ -182,10 +194,10 @@ export class PrintService {
             <span>${order.payments.map(p => p.payment_mode).join(' + ')}</span>
           </div>
           <div class="text-center bold" style="font-size: 13px; margin: 4px 0;">*** PAYMENT RECEIVED IN FULL ***</div>
-        ` : (upiVpa ? `
+        ` : (upiVpa && qrDataUrl ? `
           <div class="qr-box">
             <div style="font-size: 11px; font-weight: bold;">SCAN TO PAY VIA UPI (GPay/PhonePe/Paytm)</div>
-            <img src="${qrApiUrl}" alt="UPI QR">
+            <img src="${qrDataUrl}" alt="UPI QR">
             <div style="font-size: 10px;">VPA: <b>${upiVpa}</b></div>
           </div>
         ` : '')}
@@ -309,10 +321,19 @@ export class PrintService {
    * Generates and prints a clean A6 / Tent Standee card for dining tables
    * Contains only restaurant branding, table number badge, high-res QR code, and scan instructions.
    */
-  printTableTentCard(tableNumber: string, qrImageUrl: string, restaurantName: string): void {
+  async printTableTentCard(tableNumber: string, qrTargetOrUrl: string, restaurantName: string): Promise<void> {
     const iframe = this.getOrCreatePrintIframe();
     const doc = iframe.contentWindow?.document || iframe.contentDocument;
     if (!doc) return;
+
+    let finalQrUrl = qrTargetOrUrl;
+    if (qrTargetOrUrl && !qrTargetOrUrl.startsWith('data:')) {
+      try {
+        finalQrUrl = await this.qrCodeService.generateDataUrl(qrTargetOrUrl, { width: 250, margin: 1 });
+      } catch (e) {
+        console.warn('[PrintService] Tent card QR generation fallback:', e);
+      }
+    }
 
     const html = `
       <!DOCTYPE html>
@@ -394,7 +415,7 @@ export class PrintService {
         <div class="standee-card">
           <div class="rest-name">${restaurantName || 'Restaurant'}</div>
           <div class="table-badge">Table ${tableNumber}</div>
-          <img class="qr-img" src="${qrImageUrl}" alt="Scan QR" />
+          <img class="qr-img" src="${finalQrUrl}" alt="Scan QR" />
           <div class="scan-title">Scan to View Menu & Order</div>
           <div class="scan-subtitle">Point your phone camera to browse dishes, place orders, or request the bill directly.</div>
           <div class="footer-note">No App Download Required • Contactless Dining</div>

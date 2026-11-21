@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { OrderService } from '../../core/services/order.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { TaxCalculatorService } from '../../core/services/tax-calculator.service';
+import { QrCodeService } from '../../core/services/qr-code.service';
 import { Order } from '../../core/models/order.model';
 import { Branch } from '../../core/models/tenant.model';
 import { SelectOption } from '../../shared/components/custom-select/custom-select.component';
@@ -17,6 +18,7 @@ export class CustomerDisplayComponent implements OnInit, OnDestroy {
   activeBranch!: Branch;
   upiQrUri: string = '';
   encodedUpiUri: string = '';
+  upiQrDataUrl: string = '';
   isLiveCart: boolean = false;
   isFullscreen: boolean = false;
 
@@ -39,7 +41,8 @@ export class CustomerDisplayComponent implements OnInit, OnDestroy {
   constructor(
     public orderService: OrderService,
     public tenantService: TenantService,
-    public taxCalculator: TaxCalculatorService
+    public taxCalculator: TaxCalculatorService,
+    public qrCodeService: QrCodeService
   ) {}
 
   ngOnInit(): void {
@@ -287,6 +290,7 @@ export class CustomerDisplayComponent implements OnInit, OnDestroy {
     if (!this.activeOrder || !this.activeOrder.items || this.activeOrder.items.length === 0) {
       this.upiQrUri = '';
       this.encodedUpiUri = '';
+      this.upiQrDataUrl = '';
       return;
     }
     const branch = this.activeBranch || this.tenantService.activeBranch;
@@ -298,9 +302,15 @@ export class CustomerDisplayComponent implements OnInit, OnDestroy {
     if (amount > 0) {
       this.upiQrUri = `upi://pay?pa=${vpa}&pn=${encodeURIComponent(payee)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order #' + orderNo)}`;
       this.encodedUpiUri = encodeURIComponent(this.upiQrUri);
+      this.qrCodeService.generateDataUrl(this.upiQrUri, { width: 220, margin: 1 }).then(url => {
+        this.upiQrDataUrl = url;
+      }).catch(() => {
+        this.upiQrDataUrl = '';
+      });
     } else {
       this.upiQrUri = '';
       this.encodedUpiUri = '';
+      this.upiQrDataUrl = '';
     }
   }
 

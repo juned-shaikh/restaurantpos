@@ -7,6 +7,7 @@ import { PrintService } from '../../core/services/print.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { TaxCalculatorService } from '../../core/services/tax-calculator.service';
 import { ToastService } from '../../core/services/toast.service';
+import { QrCodeService } from '../../core/services/qr-code.service';
 import { Table, TableShape, Floor } from '../../core/models/table.model';
 import { Order } from '../../core/models/order.model';
 
@@ -53,6 +54,7 @@ export class TablesComponent implements OnInit, OnDestroy {
   tableSettleMode: 'CASH' | 'UPI' | 'CARD' = 'UPI';
   tableSettleUpiUri = '';
   tableSettleEncodedUpi = '';
+  tableSettleQrDataUrl = '';
   tableSettleCashReceived = 0;
 
   constructor(
@@ -61,6 +63,7 @@ export class TablesComponent implements OnInit, OnDestroy {
     public printService: PrintService,
     public tenantService: TenantService,
     public taxCalculator: TaxCalculatorService,
+    public qrCodeService: QrCodeService,
     private router: Router,
     private toast: ToastService
   ) {}
@@ -148,6 +151,13 @@ export class TablesComponent implements OnInit, OnDestroy {
       order.order_number
     );
     this.tableSettleEncodedUpi = encodeURIComponent(this.tableSettleUpiUri);
+    if (this.tableSettleUpiUri) {
+      this.qrCodeService.generateDataUrl(this.tableSettleUpiUri, { width: 180, margin: 1 }).then(url => {
+        this.tableSettleQrDataUrl = url;
+      });
+    } else {
+      this.tableSettleQrDataUrl = '';
+    }
     this.showTableSettleModal = true;
   }
 
@@ -233,12 +243,20 @@ export class TablesComponent implements OnInit, OnDestroy {
     return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}`;
   }
 
-  printTentCard(): void {
+  async printTentCard(): Promise<void> {
     if (!this.selectedTable) return;
-    const qrUrl = this.getTableQrImageUrl(this.selectedTable);
+    const link = this.getTableQrLink(this.selectedTable);
     const branch = this.tenantService.activeBranch;
     const restName = branch?.name || this.tenantService.currentOrg?.name || 'Restaurant';
-    this.printService.printTableTentCard(this.selectedTable.table_number, qrUrl, restName);
+    let qrUrl = '';
+    if (link) {
+      try {
+        qrUrl = await this.qrCodeService.generateDataUrl(link, { width: 250, margin: 1 });
+      } catch {
+        qrUrl = this.getTableQrImageUrl(this.selectedTable);
+      }
+    }
+    this.printService.printTableTentCard(this.selectedTable.table_number, qrUrl || link, restName);
   }
 
   // --- Add Single Table ---

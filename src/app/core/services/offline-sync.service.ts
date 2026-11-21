@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { Order } from '../models/order.model';
 import { Expense } from '../models/finance.model';
 import { SupabaseService } from './supabase.service';
+import { StorageService } from './storage.service';
 
 export interface OfflineInventoryUpdate {
   id: string;
@@ -20,6 +21,10 @@ export class OfflineSyncService {
   private readonly QUEUE_KEY_INVENTORY = 'orderrestro_offline_inventory_queue_v1';
   private readonly QUEUE_KEY_EXPENSES = 'orderrestro_offline_expenses_queue_v1';
 
+  private ordersQueue: Order[] = [];
+  private inventoryQueue: OfflineInventoryUpdate[] = [];
+  private expensesQueue: Expense[] = [];
+
   private isOnlineSubject = new BehaviorSubject<boolean>(navigator.onLine);
   isOnline$: Observable<boolean> = this.isOnlineSubject.asObservable();
 
@@ -29,8 +34,11 @@ export class OfflineSyncService {
   private isSyncingSubject = new BehaviorSubject<boolean>(false);
   isSyncing$: Observable<boolean> = this.isSyncingSubject.asObservable();
 
-  constructor(private supabaseService: SupabaseService) {
-    this.updateQueuedCount();
+  constructor(
+    private supabaseService: SupabaseService,
+    private storageService: StorageService
+  ) {
+    this.loadQueuesFromStorage();
 
     window.addEventListener('online', () => {
       console.log('🌐 [Network] Device is back ONLINE.');
@@ -39,9 +47,25 @@ export class OfflineSyncService {
     });
 
     window.addEventListener('offline', () => {
-      console.warn('⚠️ [Network] Device is OFFLINE. Offline-First queue active.');
+      console.warn('⚠️ [Network] Device is OFFLINE. Offline-First IndexedDB queue active.');
       this.isOnlineSubject.next(false);
     });
+  }
+
+  private async loadQueuesFromStorage(): Promise<void> {
+    try {
+      const orders = await this.storageService.getItem<Order[]>(this.QUEUE_KEY_ORDERS, []);
+      const inv = await this.storageService.getItem<OfflineInventoryUpdate[]>(this.QUEUE_KEY_INVENTORY, []);
+      const expenses = await this.storageService.getItem<Expense[]>(this.QUEUE_KEY_EXPENSES, []);
+      this.ordersQueue = orders || [];
+      this.inventoryQueue = inv || [];
+      this.expensesQueue = expenses || [];
+    } catch {
+      this.ordersQueue = [];
+      this.inventoryQueue = [];
+      this.expensesQueue = [];
+    }
+    this.updateQueuedCount();
   }
 
   get isOnline(): boolean {
@@ -54,46 +78,24 @@ export class OfflineSyncService {
 
   // --- Orders Queue ---
   getQueuedOrders(): Order[] {
-    try {
-      const data = localStorage.getItem(this.QUEUE_KEY_ORDERS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return this.ordersQueue;
   }
 
   queueOrder(order: Order): void {
-    const queue = this.getQueuedOrders();
-    const existingIdx = queue.findIndex(o => o.id === order.id);
+    const existingIdx = this.ordersQueue.findIndex(o => o.id === order.id);
     const offlineOrder: Order = {
       ...order,
       special_notes: (order.special_notes ? order.special_notes + ' ' : '') + '[SAVED OFFLINE]'
     };
     if (existingIdx >= 0) {
-      queue[existingIdx] = offlineOrder;
+      this.ordersQueue[existingIdx] = offlineOrder;
     } else {
-      queue.push(offlineOrder);
+      this.ordersQueue.push(offlineOrder);
     }
-    try {
-      localStorage.setItem(this.QUEUE_KEY_ORDERS, JSON.stringify(queue));
-      this.updateQueuedCount();
-      console.warn(`📦 [OfflineSync] Order #${order.order_number} safely preserved in offline storage.`);
-    } catch (e: any) {
-      console.error('Failed to save offline order to localStorage, attempting quota cleanup:', e);
-      try {
-        // Attempt quota recovery by pruning non-critical keys
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith('orderrestro_orders_cache_')) {
-            localStorage.removeItem(k);
-          }
-        }
-        localStorage.setItem(this.QUEUE_KEY_ORDERS, JSON.stringify(queue));
-        this.updateQueuedCount();
-      } catch (retryErr) {
-        console.error('CRITICAL: LocalStorage full! Could not persist offline order:', retryErr);
-      }
-    }
+
+    this.storageService.setItem(this.QUEUE_KEY_ORDERS, this.ordersQueue);
+    this.updateQueuedCount();
+    console.warn(`📦 [OfflineSync] Order #${order.order_number} safely preserved in IndexedDB offline storage.`);
 
     // Cloud-First: If internet is connected, immediately push queue to Supabase
     if (this.isOnline) {
@@ -103,17 +105,11 @@ export class OfflineSyncService {
 
   // --- Inventory Queue ---
   getQueuedInventory(): OfflineInventoryUpdate[] {
-    try {
-      const data = localStorage.getItem(this.QUEUE_KEY_INVENTORY);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return this.inventoryQueue;
   }
 
   queueInventoryUpdate(itemId: string, currentStock: number, isLowStock?: boolean, avgUnitCost?: number): void {
-    const queue = this.getQueuedInventory();
-    const existingIdx = queue.findIndex(i => i.id === itemId);
+    const existingIdx = this.inventoryQueue.findIndex(i => i.id === itemId);
     const itemUpdate: OfflineInventoryUpdate = {
       id: itemId,
       current_stock: currentStock,
@@ -122,17 +118,14 @@ export class OfflineSyncService {
       updated_at: new Date().toISOString()
     };
     if (existingIdx >= 0) {
-      queue[existingIdx] = itemUpdate;
+      this.inventoryQueue[existingIdx] = itemUpdate;
     } else {
-      queue.push(itemUpdate);
+      this.inventoryQueue.push(itemUpdate);
     }
-    try {
-      localStorage.setItem(this.QUEUE_KEY_INVENTORY, JSON.stringify(queue));
-      this.updateQueuedCount();
-      console.warn(`📦 [OfflineSync] Inventory item ${itemId} stock update preserved in offline storage.`);
-    } catch (e) {
-      console.error('Failed to save offline inventory update to localStorage', e);
-    }
+
+    this.storageService.setItem(this.QUEUE_KEY_INVENTORY, this.inventoryQueue);
+    this.updateQueuedCount();
+    console.warn(`📦 [OfflineSync] Inventory item ${itemId} stock update preserved in IndexedDB offline storage.`);
 
     if (this.isOnline) {
       this.autoSync();
@@ -141,29 +134,20 @@ export class OfflineSyncService {
 
   // --- Expenses Queue ---
   getQueuedExpenses(): Expense[] {
-    try {
-      const data = localStorage.getItem(this.QUEUE_KEY_EXPENSES);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return this.expensesQueue;
   }
 
   queueExpense(expense: Expense): void {
-    const queue = this.getQueuedExpenses();
-    const existingIdx = queue.findIndex(e => e.id === expense.id);
+    const existingIdx = this.expensesQueue.findIndex(e => e.id === expense.id);
     if (existingIdx >= 0) {
-      queue[existingIdx] = expense;
+      this.expensesQueue[existingIdx] = expense;
     } else {
-      queue.push(expense);
+      this.expensesQueue.push(expense);
     }
-    try {
-      localStorage.setItem(this.QUEUE_KEY_EXPENSES, JSON.stringify(queue));
-      this.updateQueuedCount();
-      console.warn(`📦 [OfflineSync] Expense ${expense.id} preserved in offline storage.`);
-    } catch (e) {
-      console.error('Failed to save offline expense to localStorage', e);
-    }
+
+    this.storageService.setItem(this.QUEUE_KEY_EXPENSES, this.expensesQueue);
+    this.updateQueuedCount();
+    console.warn(`📦 [OfflineSync] Expense ${expense.id} preserved in IndexedDB offline storage.`);
 
     if (this.isOnline) {
       this.autoSync();
@@ -184,7 +168,7 @@ export class OfflineSyncService {
     let successfullySynced = 0;
 
     // 1. Sync Orders
-    const orderQueue = this.getQueuedOrders();
+    const orderQueue = [...this.ordersQueue];
     if (orderQueue.length > 0) {
       console.log(`⚡ [OfflineSync] Syncing ${orderQueue.length} offline orders to Supabase Cloud...`);
       const remainingOrders: Order[] = [];
@@ -230,17 +214,16 @@ export class OfflineSyncService {
         }
       }
 
-      try {
-        if (remainingOrders.length > 0) {
-          localStorage.setItem(this.QUEUE_KEY_ORDERS, JSON.stringify(remainingOrders));
-        } else {
-          localStorage.removeItem(this.QUEUE_KEY_ORDERS);
-        }
-      } catch {}
+      this.ordersQueue = remainingOrders;
+      if (remainingOrders.length > 0) {
+        this.storageService.setItem(this.QUEUE_KEY_ORDERS, remainingOrders);
+      } else {
+        this.storageService.removeItem(this.QUEUE_KEY_ORDERS);
+      }
     }
 
     // 2. Sync Inventory Updates
-    const invQueue = this.getQueuedInventory();
+    const invQueue = [...this.inventoryQueue];
     if (invQueue.length > 0) {
       console.log(`⚡ [OfflineSync] Syncing ${invQueue.length} inventory updates to Supabase Cloud...`);
       const remainingInv: OfflineInventoryUpdate[] = [];
@@ -265,17 +248,16 @@ export class OfflineSyncService {
         }
       }
 
-      try {
-        if (remainingInv.length > 0) {
-          localStorage.setItem(this.QUEUE_KEY_INVENTORY, JSON.stringify(remainingInv));
-        } else {
-          localStorage.removeItem(this.QUEUE_KEY_INVENTORY);
-        }
-      } catch {}
+      this.inventoryQueue = remainingInv;
+      if (remainingInv.length > 0) {
+        this.storageService.setItem(this.QUEUE_KEY_INVENTORY, remainingInv);
+      } else {
+        this.storageService.removeItem(this.QUEUE_KEY_INVENTORY);
+      }
     }
 
     // 3. Sync Expenses
-    const expQueue = this.getQueuedExpenses();
+    const expQueue = [...this.expensesQueue];
     if (expQueue.length > 0) {
       console.log(`⚡ [OfflineSync] Syncing ${expQueue.length} offline expenses to Supabase Cloud...`);
       const remainingExp: Expense[] = [];
@@ -293,13 +275,12 @@ export class OfflineSyncService {
         }
       }
 
-      try {
-        if (remainingExp.length > 0) {
-          localStorage.setItem(this.QUEUE_KEY_EXPENSES, JSON.stringify(remainingExp));
-        } else {
-          localStorage.removeItem(this.QUEUE_KEY_EXPENSES);
-        }
-      } catch {}
+      this.expensesQueue = remainingExp;
+      if (remainingExp.length > 0) {
+        this.storageService.setItem(this.QUEUE_KEY_EXPENSES, remainingExp);
+      } else {
+        this.storageService.removeItem(this.QUEUE_KEY_EXPENSES);
+      }
     }
 
     this.updateQueuedCount();
@@ -309,14 +290,17 @@ export class OfflineSyncService {
   }
 
   clearQueue(): void {
-    localStorage.removeItem(this.QUEUE_KEY_ORDERS);
-    localStorage.removeItem(this.QUEUE_KEY_INVENTORY);
-    localStorage.removeItem(this.QUEUE_KEY_EXPENSES);
+    this.ordersQueue = [];
+    this.inventoryQueue = [];
+    this.expensesQueue = [];
+    this.storageService.removeItem(this.QUEUE_KEY_ORDERS);
+    this.storageService.removeItem(this.QUEUE_KEY_INVENTORY);
+    this.storageService.removeItem(this.QUEUE_KEY_EXPENSES);
     this.updateQueuedCount();
   }
 
   private updateQueuedCount(): void {
-    const total = this.getQueuedOrders().length + this.getQueuedInventory().length + this.getQueuedExpenses().length;
+    const total = this.ordersQueue.length + this.inventoryQueue.length + this.expensesQueue.length;
     this.queuedCountSubject.next(total);
   }
 }

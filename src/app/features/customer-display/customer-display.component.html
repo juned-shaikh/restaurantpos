@@ -131,8 +131,8 @@
       <div class="qr-wrapper">
         <div class="qr-box">
           <img
-            *ngIf="encodedUpiUri"
-            [src]="'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodedUpiUri"
+            *ngIf="upiQrDataUrl || encodedUpiUri"
+            [src]="upiQrDataUrl || ('https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodedUpiUri)"
             alt="Dynamic NPCI UPI QR"
             class="live-qr-img"
           />

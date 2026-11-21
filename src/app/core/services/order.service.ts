@@ -9,6 +9,7 @@ import { OfflineSyncService } from './offline-sync.service';
 import { SupabaseService } from './supabase.service';
 import { TenantService } from './tenant.service';
 import { InventoryService } from './inventory.service';
+import { StorageService } from './storage.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,7 +44,8 @@ export class OrderService {
     public offlineSync: OfflineSyncService,
     private supabaseService: SupabaseService,
     private tenantService: TenantService,
-    private inventoryService: InventoryService
+    private inventoryService: InventoryService,
+    private storageService: StorageService
   ) {
     this.initInitialOrders();
     this.initCrossTabSync();
@@ -87,40 +89,37 @@ export class OrderService {
     }
   }
 
-  private initInitialOrders(): void {
+  private async initInitialOrders(): Promise<void> {
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
+    const key = `${this.STORAGE_KEY_ORDERS}_${orgId}`;
     try {
-      const saved = localStorage.getItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed)) {
-          this.activeOrdersSubject.next(parsed);
-          return;
-        }
+      const savedOrders = await this.storageService.getItem<Order[]>(key);
+      if (savedOrders && Array.isArray(savedOrders) && savedOrders.length > 0) {
+        this.activeOrdersSubject.next(savedOrders);
+        return;
       }
     } catch (e) {}
 
-    this.activeOrdersSubject.next([]);
+    // Synchronous fallback from memory or empty
+    if (this.activeOrdersSubject.value.length === 0) {
+      this.activeOrdersSubject.next([]);
+    }
   }
 
   private persistOrdersLocally(): void {
     const orgId = this.tenantService.currentOrg?.id || 'org-default';
+    const key = `${this.STORAGE_KEY_ORDERS}_${orgId}`;
     try {
-      // Retain all non-settled active orders + max 50 most RECENT settled orders in localStorage
-      // Older orders reside safely in Supabase Cloud without exhausting browser quota
+      // With IndexedDB, we can safely store high volume without hitting 5MB browser quota limits!
+      // Retain active orders + up to 500 recent settled orders for instant offline search & receipt re-printing
       const active = this.activeOrders.filter(o => !o.is_settled && o.status !== 'SETTLED' && o.status !== 'CANCELLED');
       const settled = this.activeOrders.filter(o => o.is_settled || o.status === 'SETTLED' || o.status === 'CANCELLED');
-      // Sort newest settled orders first so the most recent 50 are preserved
       settled.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      const recentSettled = settled.slice(0, 50);
+      const recentSettled = settled.slice(0, 500);
       const toStore = [...active, ...recentSettled];
-      localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(toStore));
+      this.storageService.setItem(key, toStore);
     } catch (e) {
-      console.warn('⚠️ [OrderService] LocalStorage quota limit approached, pruning local cache:', e);
-      try {
-        const activeOnly = this.activeOrders.filter(o => !o.is_settled && o.status !== 'SETTLED');
-        localStorage.setItem(`${this.STORAGE_KEY_ORDERS}_${orgId}`, JSON.stringify(activeOnly));
-      } catch {}
+      console.warn('⚠️ [OrderService] Persistent storage fallback warning:', e);
     }
   }
 
